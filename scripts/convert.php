@@ -120,6 +120,11 @@ if ( ! convert_to_wp_app_has_build( $target_dir ) ) {
 $plugin_name = convert_to_wp_app_get_value( 'WP_APP_PLUGIN_NAME', 'Plugin name', Scaffolder::slug_to_title( $slug ), $is_interactive );
 $namespace = convert_to_wp_app_get_value( 'WP_APP_NAMESPACE', 'Namespace', Scaffolder::to_namespace( $plugin_name ), $is_interactive );
 $url_path = convert_to_wp_app_get_value( 'WP_APP_URL_PATH', 'URL path', $slug, $is_interactive );
+$wp_app_source_dir = getenv( 'WP_APP_SOURCE_DIR' );
+if ( $wp_app_source_dir === false || $wp_app_source_dir === '' ) {
+    $candidate_wp_app_source_dir = __DIR__ . '/../vendor/akirk/wp-app';
+    $wp_app_source_dir = is_dir( $candidate_wp_app_source_dir ) ? $candidate_wp_app_source_dir : null;
+}
 
 try {
     $result = ExistingAppAugmenter::augment( [
@@ -128,6 +133,9 @@ try {
         'plugin_name' => $plugin_name,
         'namespace' => $namespace,
         'url_path' => $url_path,
+        'dependency_mode' => $wp_app_source_dir !== null ? 'copy' : 'composer',
+        'autoload_mode' => $wp_app_source_dir !== null ? 'polyfill' : 'composer',
+        'wp_app_source_dir' => $wp_app_source_dir,
     ] );
 } catch ( RuntimeException $e ) {
     fwrite( STDERR, $e->getMessage() . PHP_EOL );
