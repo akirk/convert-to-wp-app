@@ -16,7 +16,8 @@ if ( ! function_exists( 'convert_to_wp_app_playground' ) ) {
 		$plugin_name = $plugin_name !== '' ? $plugin_name : convert_to_wp_app_title( $slug );
 		$url_path    = trim( (string) ( $config['url_path'] ?? $slug ), "/ \t\n\r\0\x0B" );
 		$url_path    = $url_path !== '' ? $url_path : $slug;
-		$source_dir  = convert_to_wp_app_resolve_source_dir( $config['source_build_dir'] ?? '', $plugin_dir );
+		$source      = convert_to_wp_app_resolve_source( $config['source_build_dir'] ?? '', $plugin_dir );
+		$source_dir  = $source['dir'];
 		$wp_app_dir  = convert_to_wp_app_normalize_dir( $config['wp_app_source_dir'] ?? $plugins_dir . '/__wp_app_runtime' );
 
 		if ( ! is_dir( $plugin_dir ) ) {
@@ -32,13 +33,18 @@ if ( ! function_exists( 'convert_to_wp_app_playground' ) ) {
 		}
 		convert_to_wp_app_mkdir( $asset_dir );
 
-		convert_to_wp_app_copy_directory( $source_dir, $asset_dir );
-		$index = file_get_contents( $source_dir . '/index.html' );
-		if ( $index === false ) {
-			throw new RuntimeException( "Could not read {$source_dir}/index.html" );
-		}
+		convert_to_wp_app_copy_directory( $source_dir, $asset_dir, array( '.git', 'node_modules', 'vendor' ) );
 
-		$template = convert_to_wp_app_create_template( $index, $slug );
+		if ( $source['type'] === 'php-onepager' ) {
+			$template = convert_to_wp_app_create_php_onepager_template( $source['entry'], $slug, $url_path );
+		} else {
+			$index = file_get_contents( $source_dir . '/index.html' );
+			if ( $index === false ) {
+				throw new RuntimeException( "Could not read {$source_dir}/index.html" );
+			}
+
+			$template = convert_to_wp_app_create_template( $index, $slug );
+		}
 		convert_to_wp_app_mkdir( $plugin_dir . '/templates' );
 		file_put_contents( $plugin_dir . '/templates/index.php', $template );
 
@@ -98,25 +104,64 @@ if ( ! function_exists( 'convert_to_wp_app_playground' ) ) {
 		return $path;
 	}
 
-	function convert_to_wp_app_resolve_source_dir( string $source_build_dir, string $plugin_dir ): string {
+	function convert_to_wp_app_resolve_source( string $source_build_dir, string $plugin_dir ): array {
 		$candidates = array();
 		if ( $source_build_dir !== '' ) {
 			$candidates[] = rtrim( str_replace( '\\', '/', $source_build_dir ), '/' );
 		}
 		foreach ( array( $plugin_dir . '/build', $plugin_dir . '/dist' ) as $candidate ) {
 			if ( is_file( $candidate . '/index.html' ) ) {
-				return $candidate;
+				return array(
+					'type' => 'static-html',
+					'dir'  => $candidate,
+				);
 			}
 		}
 		$candidates[] = $plugin_dir;
 
 		foreach ( $candidates as $candidate ) {
 			if ( is_file( $candidate . '/index.html' ) && convert_to_wp_app_is_deployable_index( $candidate . '/index.html' ) ) {
-				return $candidate;
+				return array(
+					'type' => 'static-html',
+					'dir'  => $candidate,
+				);
 			}
 		}
 
-		throw new RuntimeException( 'Could not find index.html in the checked-out app, build, dist, or configured source_build_dir.' );
+		foreach ( $candidates as $candidate ) {
+			$entry = convert_to_wp_app_find_php_onepager_entry( $candidate );
+			if ( $entry !== null ) {
+				return array(
+					'type'  => 'php-onepager',
+					'dir'   => $candidate,
+					'entry' => $entry,
+				);
+			}
+		}
+
+		throw new RuntimeException( 'Could not find deployable index.html or index.php in the checked-out app, build, dist, or configured source_build_dir.' );
+	}
+
+	function convert_to_wp_app_find_php_onepager_entry( string $directory ): ?string {
+		if ( is_file( $directory . '/index.php' ) ) {
+			return 'index.php';
+		}
+
+		$entries = scandir( $directory );
+		if ( $entries === false ) {
+			return null;
+		}
+
+		$php_files = array_values(
+			array_filter(
+				$entries,
+				static function( string $entry ) use ( $directory ): bool {
+					return substr( $entry, -4 ) === '.php' && is_file( $directory . '/' . $entry );
+				}
+			)
+		);
+
+		return count( $php_files ) === 1 ? $php_files[0] : null;
 	}
 
 	function convert_to_wp_app_is_deployable_index( string $index_html ): bool {
@@ -160,6 +205,118 @@ if ( ! function_exists( 'convert_to_wp_app_playground' ) ) {
 <body>
     <?php wp_app_body_open(); ?>
 {$body}
+    <?php wp_app_body_close(); ?>
+</body>
+</html>
+PHP;
+	}
+
+	function convert_to_wp_app_create_php_onepager_template( string $entry, string $slug, string $url_path ): string {
+		$plugin_file = var_export( $slug . '.php', true );
+		$entry_file  = var_export( $entry, true );
+		$route       = var_export( trim( $url_path, '/' ), true );
+
+		return <<<PHP
+<?php
+\$asset_url = static function( string \$path ): string {
+    return plugins_url( 'app/' . ltrim( \$path, '/' ), dirname( __DIR__ ) . '/' . {$plugin_file} );
+};
+\$onepager_rewrite_assets = static function( string \$html ) use ( \$asset_url ): string {
+    return preg_replace_callback(
+        '/<([a-z][a-z0-9:-]*)\\b[^>]*>/i',
+        static function( array \$matches ) use ( \$asset_url ): string {
+            \$tag_name = strtolower( \$matches[1] );
+            return preg_replace_callback(
+                '/\\b(src|href)=([\\'"])([^\\'"]+)\\2/i',
+                static function( array \$attr_matches ) use ( \$tag_name, \$asset_url ): string {
+                    \$attribute = strtolower( \$attr_matches[1] );
+                    \$asset_attributes = array(
+                        'src'  => array( 'audio', 'embed', 'iframe', 'img', 'script', 'source', 'track', 'video' ),
+                        'href' => array( 'link' ),
+                    );
+                    if ( ! in_array( \$tag_name, \$asset_attributes[ \$attribute ] ?? array(), true ) ) {
+                        return \$attr_matches[0];
+                    }
+                    \$path = trim( html_entity_decode( \$attr_matches[3], ENT_QUOTES ) );
+                    if ( \$path === '' || \$path[0] === '#' || \$path[0] === '?' || preg_match( '/^(?:[a-z][a-z0-9+.-]*:|\\/\\/)/i', \$path ) ) {
+                        return \$attr_matches[0];
+                    }
+                    \$path = preg_replace( '/[?#].*\$/', '', \$path );
+                    \$path = preg_replace( '#^\\./#', '', \$path );
+                    \$path = ltrim( \$path, '/' );
+                    if ( \$path === '' || strpos( \$path, '..' ) !== false ) {
+                        return \$attr_matches[0];
+                    }
+                    return \$attr_matches[1] . '=' . \$attr_matches[2] . esc_url( \$asset_url( \$path ) ) . \$attr_matches[2];
+                },
+                \$matches[0]
+            );
+        },
+        \$html
+    );
+};
+\$onepager_rewrite_route_links = static function( string \$html ): string {
+    \$host = \$_SERVER['HTTP_HOST'] ?? parse_url( home_url(), PHP_URL_HOST );
+    \$route_url = home_url( '/' . trim( {$route}, '/' ) . '/' );
+    return preg_replace_callback(
+        '/\\b(href|action)=([\\'"])([^\\'"]*)\\2/i',
+        static function( array \$matches ) use ( \$host, \$route_url ): string {
+            \$url = html_entity_decode( \$matches[3], ENT_QUOTES );
+            if ( \$url === '/' || strpos( \$url, '/?' ) === 0 ) {
+                \$rewritten = rtrim( \$route_url, '/' ) . '/' . ltrim( \$url, '/' );
+                return \$matches[1] . '=' . \$matches[2] . esc_url( \$rewritten ) . \$matches[2];
+            }
+            \$parts = parse_url( \$url );
+            if ( isset( \$parts['host'] ) && strcasecmp( \$parts['host'], (string) \$host ) === 0 ) {
+                \$path = \$parts['path'] ?? '/';
+                if ( isset( \$parts['query'] ) ) {
+                    \$path .= '?' . \$parts['query'];
+                }
+                if ( \$path === '/' || strpos( \$path, '/?' ) === 0 ) {
+                    \$rewritten = rtrim( \$route_url, '/' ) . '/' . ltrim( \$path, '/' );
+                    return \$matches[1] . '=' . \$matches[2] . esc_url( \$rewritten ) . \$matches[2];
+                }
+            }
+            return \$matches[0];
+        },
+        \$html
+    );
+};
+\$onepager_extract_tag = static function( string \$html, string \$tag ): string {
+    if ( preg_match( '/<' . preg_quote( \$tag, '/' ) . '\\b[^>]*>(.*?)<\\/' . preg_quote( \$tag, '/' ) . '>/is', \$html, \$matches ) ) {
+        return trim( \$matches[1] );
+    }
+    return '';
+};
+\$entry = __DIR__ . '/../app/' . {$entry_file};
+\$previous_cwd = getcwd();
+chdir( dirname( \$entry ) );
+ob_start();
+try {
+    include \$entry;
+} finally {
+    if ( \$previous_cwd !== false ) {
+        chdir( \$previous_cwd );
+    }
+}
+\$html = ob_get_clean();
+\$html = \$onepager_rewrite_route_links( \$onepager_rewrite_assets( \$html ) );
+\$head = \$onepager_extract_tag( \$html, 'head' );
+\$body = \$onepager_extract_tag( \$html, 'body' );
+\$head = preg_replace( '/<title\\b[^>]*>.*?<\\/title>/is', '<title>' . wp_app_title() . '</title>', \$head, 1, \$count );
+if ( \$count === 0 ) {
+    \$head = '<title>' . wp_app_title() . '</title>' . "\\n" . ltrim( \$head );
+}
+?>
+<!DOCTYPE html>
+<html <?php wp_app_language_attributes(); ?>>
+<head>
+    <?php echo \$head; ?>
+    <?php wp_app_head(); ?>
+</head>
+<body>
+    <?php wp_app_body_open(); ?>
+    <?php echo \$body; ?>
     <?php wp_app_body_close(); ?>
 </body>
 </html>
@@ -301,12 +458,16 @@ PHP;
 		if ( $entries === false ) {
 			throw new RuntimeException( "Could not read directory: {$source}" );
 		}
+		$destination = convert_to_wp_app_normalize_dir( $destination );
 		foreach ( $entries as $entry ) {
 			if ( $entry === '.' || $entry === '..' || in_array( $entry, $skip, true ) ) {
 				continue;
 			}
 			$source_path      = $source . '/' . $entry;
 			$destination_path = $destination . '/' . $entry;
+			if ( strpos( convert_to_wp_app_normalize_dir( $source_path ) . '/', $destination . '/' ) === 0 ) {
+				continue;
+			}
 			if ( is_dir( $source_path ) && ! is_link( $source_path ) ) {
 				convert_to_wp_app_copy_directory( $source_path, $destination_path, $skip );
 			} else {

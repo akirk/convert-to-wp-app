@@ -1,6 +1,6 @@
 # convert-to-wp-app
 
-Convert an existing static frontend app into a WordPress plugin powered by [WpApp](https://github.com/akirk/wp-app).
+Convert an existing one-page app into a WordPress plugin powered by [WpApp](https://github.com/akirk/wp-app).
 
 ## GitHub Pages Blueprint Generator
 
@@ -23,12 +23,13 @@ The generated Playground blueprint:
 4. Checks out this converter repository into
    `wp-content/plugins/__convert_to_wp_app`.
 5. Runs `scripts/playground-convert.php` from that checkout with `runPHP`.
-6. Imports local checked-out static files into the plugin.
+6. Imports local checked-out app files into the plugin.
 7. Writes a self-contained WpApp plugin bootstrap and Composer-lite autoloader.
 8. Activates the converted plugin and lands on `/{slug}/`.
 
-The converter does not fetch deployed URLs at runtime. The static one-pager must
-exist in a checked-out git directory: either in the source repo's `build/`,
+The converter does not fetch deployed URLs at runtime. The one-pager must exist
+in a checked-out git directory: either as a source repo PHP one-pager
+(`index.php`, or a single root PHP file), in the source repo's `build/`,
 `dist/`, or deployable root `index.html`, or in the optional built checkout.
 If GitHub Pages is deployed only from a private Actions artifact and not from a
 branch, tag, commit, or repository path, Playground cannot import that artifact
@@ -67,19 +68,19 @@ The reusable LLM guidance lives in `skills/wp-app-blueprint/`.
 ### Manual Conversion
 
 You can run the same conversion outside a Blueprint when you already have a
-local plugin checkout, a static build directory, and a local `akirk/wp-app`
+local plugin checkout, a source/build directory, and a local `akirk/wp-app`
 checkout:
 
 ```bash
 php scripts/convert-static.php \
   --plugin-dir /path/to/wp-content/plugins/my-app \
-  --source-build-dir /path/to/static-build \
+  --source-build-dir /path/to/source-or-static-build \
   --wp-app-source-dir /path/to/wp-app \
   --slug my-app \
   --plugin-name "My App"
 ```
 
-This writes the WpApp bootstrap, `templates/index.php`, copied static assets,
+This writes the WpApp bootstrap, `templates/index.php`, copied app files,
 and the Composer-lite WpApp runtime into the target plugin directory. It does
 not clone repositories, run frontend builds, or require WordPress to be loaded.
 
@@ -96,11 +97,15 @@ Composer creates `convert-to-wp-app/`, then the wizard treats `..` as the existi
 
 The converter accepts:
 
+- `index.php` in the app root, or a single root PHP file, for PHP one-pagers
 - `index.html` in the app root for plain static prototypes
 - `build/index.html`
 - `dist/index.html`
 
-For React, Vite, and other bundled apps, run the frontend build first. Root `index.html` is only treated as deployable when it does not look like a bundler dev entry such as `/src/main.jsx`.
+For React, Vite, and other bundled apps, run the frontend build first or point
+the generator at a git-visible built ref/path. Root `index.html` is only treated
+as deployable when it does not look like a bundler dev entry such as
+`/src/main.jsx`.
 
 The converter preserves frontend source files and adds:
 

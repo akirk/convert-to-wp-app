@@ -1,11 +1,11 @@
 ---
 name: wp-app-blueprint
-description: Use when creating WordPress Playground blueprints that convert GitHub-hosted static one-page apps into self-contained WpApp plugins via git:directory checkouts and convert-to-wp-app.
+description: Use when creating WordPress Playground blueprints that convert GitHub-hosted one-page apps into self-contained WpApp plugins via git:directory checkouts and convert-to-wp-app.
 ---
 
 # WpApp Blueprint
 
-Use this skill when a user wants a `playground.wordpress.net` link or Blueprint JSON that turns a GitHub-hosted static app into a WordPress app plugin.
+Use this skill when a user wants a `playground.wordpress.net` link or Blueprint JSON that turns a GitHub-hosted one-page app into a WordPress app plugin.
 
 ## Core Rule
 
@@ -30,11 +30,16 @@ node scripts/generate-blueprint.js --repo https://github.com/owner/repo --playgr
 - `--plugin-name`: title-cased slug unless the app has a clear human name.
 - `--converter-ref`: default `main`; use a commit SHA plus `--converter-ref-type commit` for reproducible links.
 
-## Built Static Files
+## Supported Source Shapes
 
-The converter does not fetch deployed URLs at PHP runtime. The static files must be available from a git checkout in Playground.
+The converter does not fetch deployed URLs at PHP runtime. App files must be available from a git checkout in Playground.
 
-Use one of these:
+No-build PHP one-pagers work when the source repo has:
+
+- `index.php` in the app root.
+- A single root PHP file.
+
+Static frontend apps work when one of these is true:
 
 - Source repo has `build/index.html`.
 - Source repo has `dist/index.html`.
@@ -51,7 +56,7 @@ or:
 --built-ref main --built-ref-type branch --built-path docs
 ```
 
-If GitHub Pages is deployed only from an Actions artifact and the built files are not available via branch, tag, commit, or repository path, say that a pure `git:directory` blueprint cannot import it.
+If a React, Vite, or similar source repo has no built files in git, and GitHub Pages is deployed only from an Actions artifact, say that a pure `git:directory` blueprint cannot import it.
 
 ## Validation
 
@@ -78,7 +83,7 @@ When the user wants the same conversion outside Playground and already has local
 ```bash
 php scripts/convert-static.php \
   --plugin-dir /path/to/wp-content/plugins/my-app \
-  --source-build-dir /path/to/static-build \
+  --source-build-dir /path/to/source-or-static-build \
   --wp-app-source-dir /path/to/wp-app
 ```
 
