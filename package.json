@@ -1,0 +1,8 @@
+{
+  "name": "convert-wp-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate-blueprint": "node scripts/generate-blueprint.js"
+  }
+}

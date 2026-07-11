@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Convert to WpApp</title>
+	<style>
+		:root {
+			color-scheme: light;
+			--bg: #f7f8fa;
+			--panel: #fff;
+			--text: #171a1f;
+			--muted: #5d6675;
+			--border: #d9dee7;
+			--accent: #1e6bff;
+			--accent-dark: #174fc0;
+			--error: #b42318;
+			--code: #eef2f7;
+		}
+		* { box-sizing: border-box; }
+		body {
+			margin: 0;
+			font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+			background: var(--bg);
+			color: var(--text);
+			line-height: 1.5;
+		}
+		main {
+			width: min(980px, calc(100% - 32px));
+			margin: 0 auto;
+			padding: 48px 0;
+		}
+		h1 {
+			margin: 0 0 10px;
+			font-size: clamp(2rem, 5vw, 4rem);
+			line-height: 1;
+			letter-spacing: 0;
+		}
+		.lede {
+			margin: 0 0 32px;
+			max-width: 760px;
+			color: var(--muted);
+			font-size: 1.05rem;
+		}
+		.workspace {
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) minmax(320px, 0.8fr);
+			gap: 20px;
+			align-items: start;
+		}
+		section {
+			background: var(--panel);
+			border: 1px solid var(--border);
+			border-radius: 8px;
+			padding: 22px;
+			box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+		}
+		h2 {
+			margin: 0 0 18px;
+			font-size: 1rem;
+			line-height: 1.2;
+		}
+		label {
+			display: block;
+			margin: 16px 0 6px;
+			font-weight: 650;
+			font-size: 0.9rem;
+		}
+		input, select, textarea {
+			width: 100%;
+			border: 1px solid var(--border);
+			border-radius: 6px;
+			background: #fff;
+			color: var(--text);
+			font: inherit;
+		}
+		input, select {
+			min-height: 42px;
+			padding: 8px 10px;
+		}
+		textarea {
+			min-height: 280px;
+			padding: 12px;
+			font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+			font-size: 0.82rem;
+			resize: vertical;
+			background: #fbfcfe;
+		}
+		.row {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 12px;
+		}
+		.actions {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 10px;
+			margin-top: 18px;
+		}
+		button, .button {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			min-height: 42px;
+			padding: 9px 14px;
+			border: 1px solid var(--border);
+			border-radius: 6px;
+			background: #fff;
+			color: var(--text);
+			font: inherit;
+			font-weight: 650;
+			text-decoration: none;
+			cursor: pointer;
+		}
+		button.primary, .button.primary {
+			border-color: var(--accent);
+			background: var(--accent);
+			color: #fff;
+		}
+		button.primary:hover, .button.primary:hover { background: var(--accent-dark); }
+		.output-link {
+			display: block;
+			overflow-wrap: anywhere;
+			margin-top: 12px;
+			padding: 12px;
+			border-radius: 6px;
+			background: var(--code);
+			color: var(--accent-dark);
+			font-size: 0.85rem;
+		}
+		.error {
+			display: none;
+			margin-top: 14px;
+			color: var(--error);
+			font-weight: 650;
+		}
+		.examples {
+			display: grid;
+			gap: 10px;
+			margin-top: 18px;
+		}
+		.example {
+			text-align: left;
+			justify-content: flex-start;
+			min-height: 0;
+			padding: 10px 12px;
+		}
+		.hint {
+			margin: 6px 0 0;
+			color: var(--muted);
+			font-size: 0.85rem;
+		}
+		@media (max-width: 780px) {
+			main { padding: 28px 0; }
+			.workspace, .row { grid-template-columns: 1fr; }
+			.actions { flex-direction: column; }
+			button, .button { width: 100%; }
+		}
+	</style>
+</head>
+<body>
+	<main>
+		<h1>Convert to WpApp</h1>
+		<p class="lede">Enter a GitHub-hosted one-pager. This creates a WordPress Playground link that checks out the source repo, optionally checks out a built static branch or subdirectory, and converts those local files into a self-contained wp-app plugin.</p>
+
+		<div class="workspace">
+			<section>
+				<h2>Source</h2>
+				<form id="generator">
+					<label for="repo">GitHub repository</label>
+					<input id="repo" name="repo" required placeholder="https://github.com/owner/repo">
+
+					<div class="row">
+						<div>
+							<label for="ref">Git ref</label>
+							<input id="ref" name="ref" placeholder="HEAD">
+						</div>
+						<div>
+							<label for="refType">Ref type</label>
+							<select id="refType" name="refType">
+								<option value="">HEAD or commit</option>
+								<option value="branch">Branch</option>
+								<option value="tag">Tag</option>
+								<option value="commit">Commit</option>
+							</select>
+						</div>
+					</div>
+
+					<div class="row">
+						<div>
+							<label for="builtRef">Built site ref</label>
+							<input id="builtRef" name="builtRef" placeholder="gh-pages">
+						</div>
+						<div>
+							<label for="builtRefType">Built ref type</label>
+							<select id="builtRefType" name="builtRefType">
+								<option value="">Use source checkout</option>
+								<option value="branch">Branch</option>
+								<option value="tag">Tag</option>
+								<option value="commit">Commit</option>
+							</select>
+						</div>
+					</div>
+
+					<label for="builtPath">Built site path</label>
+					<input id="builtPath" name="builtPath" placeholder="optional subdirectory">
+					<p class="hint">Leave this empty to use the source checkout's build, dist, or root index.html. Use it when the built static files are available from a branch, tag, commit, or subdirectory.</p>
+
+					<div class="row">
+						<div>
+							<label for="slug">Plugin slug</label>
+							<input id="slug" name="slug" placeholder="repo-name">
+						</div>
+						<div>
+							<label for="pluginName">Plugin name</label>
+							<input id="pluginName" name="pluginName" placeholder="Repo Name">
+						</div>
+					</div>
+
+					<label for="converterRef">Converter ref</label>
+					<input id="converterRef" name="converterRef" placeholder="main">
+					<label for="converterRefType">Converter ref type</label>
+					<select id="converterRefType" name="converterRefType">
+						<option value="branch">Branch</option>
+						<option value="tag">Tag</option>
+						<option value="commit">Commit</option>
+					</select>
+					<p class="hint">Use a commit SHA after publishing if you want reproducible links.</p>
+
+					<div class="actions">
+						<button class="primary" type="submit">Generate Playground Link</button>
+					</div>
+					<div id="error" class="error"></div>
+				</form>
+
+				<div class="examples">
+					<button class="example" type="button" data-repo="https://github.com/jonathanbossenger/times-table-tester/" data-ref="HEAD">Times Table Tester</button>
+					<button class="example" type="button" data-repo="https://github.com/ashfame/sojourn" data-ref="HEAD">Sojourn</button>
+				</div>
+			</section>
+
+			<section>
+				<h2>Output</h2>
+				<div class="actions">
+					<a id="playgroundLink" class="button primary" href="#" target="_blank" rel="noopener">Open Playground</a>
+					<button id="copyLink" type="button">Copy Link</button>
+					<button id="copyBlueprint" type="button">Copy Blueprint</button>
+				</div>
+				<a id="outputLink" class="output-link" href="#" target="_blank" rel="noopener"></a>
+
+				<label for="blueprint">Blueprint</label>
+				<textarea id="blueprint" readonly></textarea>
+			</section>
+		</div>
+	</main>
+
+	<script type="module">
+		import { buildBlueprint, buildPlaygroundUrl, parseGitHubRepo, toSlug, toTitle } from './lib/blueprint-generator.js';
+
+		const form = document.querySelector('#generator');
+		const repo = document.querySelector('#repo');
+		const ref = document.querySelector('#ref');
+		const refType = document.querySelector('#refType');
+		const builtRef = document.querySelector('#builtRef');
+		const builtRefType = document.querySelector('#builtRefType');
+		const builtPath = document.querySelector('#builtPath');
+		const slug = document.querySelector('#slug');
+		const pluginName = document.querySelector('#pluginName');
+		const converterRef = document.querySelector('#converterRef');
+		const converterRefType = document.querySelector('#converterRefType');
+		const error = document.querySelector('#error');
+		const blueprintOutput = document.querySelector('#blueprint');
+		const playgroundLink = document.querySelector('#playgroundLink');
+		const outputLink = document.querySelector('#outputLink');
+		const copyLink = document.querySelector('#copyLink');
+		const copyBlueprint = document.querySelector('#copyBlueprint');
+
+		const state = new URLSearchParams(window.location.search);
+		repo.value = state.get('repo') || 'https://github.com/jonathanbossenger/times-table-tester/';
+		ref.value = state.get('ref') || 'HEAD';
+		refType.value = state.get('refType') || '';
+		builtRef.value = state.get('builtRef') || '';
+		builtRefType.value = state.get('builtRefType') || '';
+		builtPath.value = state.get('builtPath') || '';
+		slug.value = state.get('slug') || '';
+		pluginName.value = state.get('pluginName') || '';
+		converterRef.value = state.get('converterRef') || 'main';
+		converterRefType.value = state.get('converterRefType') || 'branch';
+
+		function update() {
+			error.style.display = 'none';
+			try {
+				const blueprint = buildBlueprint(getInput());
+				const json = JSON.stringify(blueprint, null, '\t');
+				const link = buildPlaygroundUrl(blueprint);
+				blueprintOutput.value = json;
+				playgroundLink.href = link;
+				outputLink.href = link;
+				outputLink.textContent = link;
+				const parsed = parseGitHubRepo(repo.value);
+				const params = new URLSearchParams({
+					repo: parsed.url,
+					ref: ref.value || 'HEAD',
+					refType: refType.value,
+					builtRef: builtRef.value,
+					builtRefType: builtRefType.value,
+					builtPath: builtPath.value,
+					slug: slug.value || toSlug(parsed.name),
+					pluginName: pluginName.value || toTitle(parsed.name),
+					converterRef: converterRef.value || 'main',
+					converterRefType: converterRefType.value || 'branch'
+				});
+				window.history.replaceState(null, '', `?${params.toString()}`);
+			} catch (err) {
+				error.textContent = err.message;
+				error.style.display = 'block';
+			}
+		}
+
+		function getInput() {
+			return {
+				repo: repo.value,
+				ref: ref.value || 'HEAD',
+				refType: refType.value,
+				builtRef: builtRef.value,
+				builtRefType: builtRefType.value,
+				builtPath: builtPath.value,
+				slug: slug.value,
+				pluginName: pluginName.value,
+				converterRef: converterRef.value || 'main',
+				converterRefType: converterRefType.value || 'branch',
+			};
+		}
+
+		form.addEventListener('submit', (event) => {
+			event.preventDefault();
+			update();
+		});
+
+		[repo, ref, refType, builtRef, builtRefType, builtPath, slug, pluginName, converterRef, converterRefType].forEach((field) => {
+			field.addEventListener('input', update);
+			field.addEventListener('change', update);
+		});
+
+		document.querySelectorAll('.example').forEach((button) => {
+			button.addEventListener('click', () => {
+				const parsed = parseGitHubRepo(button.dataset.repo);
+				repo.value = button.dataset.repo;
+				ref.value = button.dataset.ref || 'HEAD';
+				refType.value = '';
+				builtRef.value = '';
+				builtRefType.value = '';
+				builtPath.value = '';
+				slug.value = toSlug(parsed.name);
+				pluginName.value = toTitle(parsed.name);
+				update();
+			});
+		});
+
+		copyLink.addEventListener('click', async () => {
+			await navigator.clipboard.writeText(outputLink.href);
+		});
+
+		copyBlueprint.addEventListener('click', async () => {
+			await navigator.clipboard.writeText(blueprintOutput.value);
+		});
+
+		update();
+	</script>
+</body>
+</html>

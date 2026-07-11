@@ -1,0 +1,353 @@
+<?php
+/**
+ * Convert checked-out static files into a self-contained WpApp plugin.
+ *
+ * This file is designed to be checked out by a WordPress Playground Blueprint
+ * and then required from runPHP.
+ */
+
+if ( ! function_exists( 'convert_to_wp_app_playground' ) ) {
+	function convert_to_wp_app_playground( array $config ): array {
+		$slug        = convert_to_wp_app_slug( $config['slug'] ?? basename( $config['plugin_dir'] ?? 'wp-app' ) );
+		$plugin_dir  = convert_to_wp_app_normalize_dir( $config['plugin_dir'] ?? convert_to_wp_app_default_plugins_dir() . '/' . $slug );
+		$plugins_dir = convert_to_wp_app_normalize_dir( $config['plugins_dir'] ?? ( defined( 'WP_PLUGIN_DIR' ) ? WP_PLUGIN_DIR : dirname( $plugin_dir ) ) );
+		$plugin_dir  = convert_to_wp_app_normalize_plugin_dir( $plugin_dir, $plugins_dir );
+		$plugin_name = trim( (string) ( $config['plugin_name'] ?? convert_to_wp_app_title( $slug ) ) );
+		$plugin_name = $plugin_name !== '' ? $plugin_name : convert_to_wp_app_title( $slug );
+		$url_path    = trim( (string) ( $config['url_path'] ?? $slug ), "/ \t\n\r\0\x0B" );
+		$url_path    = $url_path !== '' ? $url_path : $slug;
+		$source_dir  = convert_to_wp_app_resolve_source_dir( $config['source_build_dir'] ?? '', $plugin_dir );
+		$wp_app_dir  = convert_to_wp_app_normalize_dir( $config['wp_app_source_dir'] ?? $plugins_dir . '/__wp_app_runtime' );
+
+		if ( ! is_dir( $plugin_dir ) ) {
+			throw new RuntimeException( "Plugin directory does not exist: {$plugin_dir}" );
+		}
+		if ( ! is_dir( $wp_app_dir . '/src' ) ) {
+			throw new RuntimeException( "WpApp source directory does not exist: {$wp_app_dir}" );
+		}
+
+		$asset_dir = $plugin_dir . '/app';
+		if ( is_dir( $asset_dir ) ) {
+			convert_to_wp_app_remove_directory( $asset_dir );
+		}
+		convert_to_wp_app_mkdir( $asset_dir );
+
+		convert_to_wp_app_copy_directory( $source_dir, $asset_dir );
+		$index = file_get_contents( $source_dir . '/index.html' );
+		if ( $index === false ) {
+			throw new RuntimeException( "Could not read {$source_dir}/index.html" );
+		}
+
+		$template = convert_to_wp_app_create_template( $index, $slug );
+		convert_to_wp_app_mkdir( $plugin_dir . '/templates' );
+		file_put_contents( $plugin_dir . '/templates/index.php', $template );
+
+		convert_to_wp_app_copy_wp_app_runtime( $wp_app_dir, $plugin_dir );
+		file_put_contents( $plugin_dir . '/vendor/autoload.php', convert_to_wp_app_autoload_php() );
+		file_put_contents( $plugin_dir . '/' . $slug . '.php', convert_to_wp_app_plugin_php( $slug, $plugin_name, $url_path ) );
+
+		if ( function_exists( 'activate_plugin' ) ) {
+			$result = activate_plugin( $slug . '/' . $slug . '.php' );
+			if ( is_wp_error( $result ) ) {
+				throw new RuntimeException( $result->get_error_message() );
+			}
+		}
+
+		if ( function_exists( 'flush_rewrite_rules' ) ) {
+			flush_rewrite_rules();
+		}
+
+		return array(
+			'slug'       => $slug,
+			'plugin_dir' => $plugin_dir,
+			'url_path'   => $url_path,
+			'url'        => function_exists( 'home_url' ) ? home_url( '/' . trim( $url_path, '/' ) . '/' ) : '/' . trim( $url_path, '/' ) . '/',
+		);
+	}
+
+	function convert_to_wp_app_slug( string $value ): string {
+		$value = strtolower( preg_replace( '/[^a-zA-Z0-9]+/', '-', $value ) );
+		$value = trim( $value, '-' );
+		return $value !== '' ? $value : 'wp-app';
+	}
+
+	function convert_to_wp_app_title( string $slug ): string {
+		return ucwords( str_replace( array( '-', '_' ), ' ', $slug ) );
+	}
+
+	function convert_to_wp_app_default_plugins_dir(): string {
+		if ( defined( 'WP_PLUGIN_DIR' ) ) {
+			return WP_PLUGIN_DIR;
+		}
+		if ( defined( 'WP_CONTENT_DIR' ) ) {
+			return WP_CONTENT_DIR . '/plugins';
+		}
+		return getcwd();
+	}
+
+	function convert_to_wp_app_normalize_dir( string $path ): string {
+		return rtrim( str_replace( '\\', '/', $path ), '/' );
+	}
+
+	function convert_to_wp_app_normalize_plugin_dir( string $path, string $plugins_dir ): string {
+		$path = convert_to_wp_app_normalize_dir( $path );
+		$base = convert_to_wp_app_normalize_dir( $plugins_dir );
+		if ( strpos( $path . '/', $base . '/' ) !== 0 ) {
+			throw new RuntimeException( "Path must be inside wp-content/plugins: {$path}" );
+		}
+		return $path;
+	}
+
+	function convert_to_wp_app_resolve_source_dir( string $source_build_dir, string $plugin_dir ): string {
+		$candidates = array();
+		if ( $source_build_dir !== '' ) {
+			$candidates[] = rtrim( str_replace( '\\', '/', $source_build_dir ), '/' );
+		}
+		foreach ( array( $plugin_dir . '/build', $plugin_dir . '/dist' ) as $candidate ) {
+			if ( is_file( $candidate . '/index.html' ) ) {
+				return $candidate;
+			}
+		}
+		$candidates[] = $plugin_dir;
+
+		foreach ( $candidates as $candidate ) {
+			if ( is_file( $candidate . '/index.html' ) && convert_to_wp_app_is_deployable_index( $candidate . '/index.html' ) ) {
+				return $candidate;
+			}
+		}
+
+		throw new RuntimeException( 'Could not find index.html in the checked-out app, build, dist, or configured source_build_dir.' );
+	}
+
+	function convert_to_wp_app_is_deployable_index( string $index_html ): bool {
+		$html = file_get_contents( $index_html );
+		if ( $html === false ) {
+			return false;
+		}
+		if ( strpos( $html, '%PUBLIC_URL%' ) !== false ) {
+			return false;
+		}
+		return ! preg_match( '#\b(?:src|href)=([\'"])/?src/#i', $html );
+	}
+
+	function convert_to_wp_app_create_template( string $html, string $slug ): string {
+		$head = convert_to_wp_app_extract_tag_contents( $html, 'head' );
+		$body = convert_to_wp_app_extract_tag_contents( $html, 'body' );
+		$head = convert_to_wp_app_rewrite_asset_urls( $head );
+		$body = convert_to_wp_app_rewrite_asset_urls( $body );
+
+		$head = preg_replace( '/<title\b[^>]*>.*?<\/title>/is', '<title><?php wp_app_title(); ?></title>', $head, 1, $count );
+		if ( $count === 0 ) {
+			$head = "<title><?php wp_app_title(); ?></title>\n" . ltrim( $head );
+		}
+
+		$plugin_file = var_export( $slug . '.php', true );
+		$head        = convert_to_wp_app_indent( trim( $head ), '    ' );
+		$body        = convert_to_wp_app_indent( trim( $body ), '    ' );
+
+		return <<<PHP
+<?php
+\$asset_url = static function( string \$path ): string {
+    return plugins_url( 'app/' . ltrim( \$path, '/' ), dirname( __DIR__ ) . '/' . {$plugin_file} );
+};
+?>
+<!DOCTYPE html>
+<html <?php wp_app_language_attributes(); ?>>
+<head>
+{$head}
+    <?php wp_app_head(); ?>
+</head>
+<body>
+    <?php wp_app_body_open(); ?>
+{$body}
+    <?php wp_app_body_close(); ?>
+</body>
+</html>
+PHP;
+	}
+
+	function convert_to_wp_app_extract_tag_contents( string $html, string $tag ): string {
+		if ( preg_match( '/<' . preg_quote( $tag, '/' ) . '\b[^>]*>(.*?)<\/' . preg_quote( $tag, '/' ) . '>/is', $html, $matches ) ) {
+			return trim( $matches[1] );
+		}
+		return '';
+	}
+
+	function convert_to_wp_app_rewrite_asset_urls( string $html ): string {
+		return preg_replace_callback(
+			'/<([a-z][a-z0-9:-]*)\b[^>]*>/i',
+			static function( array $matches ): string {
+				$tag_name = strtolower( $matches[1] );
+				return preg_replace_callback(
+					'/\b(src|href)=([\'"])([^\'"]+)\2/i',
+					static function( array $attr_matches ) use ( $tag_name ): string {
+						$attribute = strtolower( $attr_matches[1] );
+						if ( ! convert_to_wp_app_is_asset_attribute( $tag_name, $attribute ) ) {
+							return $attr_matches[0];
+						}
+						$path = convert_to_wp_app_local_asset_path( html_entity_decode( $attr_matches[3], ENT_QUOTES ) );
+						if ( $path === null ) {
+							return $attr_matches[0];
+						}
+						return $attr_matches[1] . '=' . $attr_matches[2] . '<?php echo esc_url( $asset_url( ' . var_export( $path, true ) . ' ) ); ?>' . $attr_matches[2];
+					},
+					$matches[0]
+				);
+			},
+			$html
+		);
+	}
+
+	function convert_to_wp_app_local_asset_path( string $url ): ?string {
+		$url = trim( $url );
+		if ( $url === '' || $url[0] === '#' || $url[0] === '?' ) {
+			return null;
+		}
+		if ( preg_match( '/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i', $url ) ) {
+			return null;
+		}
+		if ( strpos( $url, '%PUBLIC_URL%/' ) === 0 ) {
+			$url = substr( $url, strlen( '%PUBLIC_URL%/' ) );
+		}
+		$url = preg_replace( '/[?#].*$/', '', $url );
+		$url = preg_replace( '#^\./#', '', $url );
+		$url = ltrim( $url, '/' );
+		return $url !== '' && strpos( $url, '..' ) === false ? $url : null;
+	}
+
+	function convert_to_wp_app_is_asset_attribute( string $tag_name, string $attribute ): bool {
+		$asset_attributes = array(
+			'src'  => array( 'audio', 'embed', 'iframe', 'img', 'script', 'source', 'track', 'video' ),
+			'href' => array( 'link' ),
+		);
+		return in_array( $tag_name, $asset_attributes[ $attribute ] ?? array(), true );
+	}
+
+	function convert_to_wp_app_plugin_php( string $slug, string $plugin_name, string $url_path ): string {
+		$plugin_name_header = str_replace( array( "\r", "\n" ), ' ', $plugin_name );
+		$text_domain        = $slug;
+		$app_name           = var_export( $plugin_name, true );
+		$route              = var_export( $url_path, true );
+		return <<<PHP
+<?php
+/**
+ * Plugin Name: {$plugin_name_header}
+ * Description: A checked-out static one-pager converted into a WordPress app powered by WpApp.
+ * Version: 1.0.0
+ * Text Domain: {$text_domain}
+ * Requires PHP: 7.4
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
+require_once __DIR__ . '/vendor/autoload.php';
+
+add_action( 'plugins_loaded', function() {
+    \$app = new \\WpApp\\WpApp( __DIR__ . '/templates', {$route}, array(
+        'app_name' => {$app_name},
+        'my_apps'  => true,
+    ) );
+    \$app->init();
+} );
+
+register_activation_hook( __FILE__, function() {
+    flush_rewrite_rules();
+} );
+
+register_deactivation_hook( __FILE__, function() {
+    flush_rewrite_rules();
+} );
+PHP;
+	}
+
+	function convert_to_wp_app_copy_wp_app_runtime( string $source, string $plugin_dir ): void {
+		$destination = $plugin_dir . '/vendor/akirk/wp-app';
+		if ( is_dir( $destination ) ) {
+			convert_to_wp_app_remove_directory( $destination );
+		}
+		convert_to_wp_app_copy_directory( $source, $destination, array( '.git', 'vendor', 'tests' ) );
+	}
+
+	function convert_to_wp_app_autoload_php(): string {
+		return <<<'PHP'
+<?php
+$wp_app_dir = __DIR__ . '/akirk/wp-app';
+$files = array(
+    'src/class-registry.php',
+    'src/class-settings.php',
+    'src/class-router.php',
+    'src/class-masterbar.php',
+    'src/class-wpapp.php',
+    'src/class-client-encrypted-fields.php',
+    'src/BaseStorage.php',
+    'src/abstract-baseapp.php',
+    'src/functions.php',
+);
+foreach ( $files as $file ) {
+    $path = $wp_app_dir . '/' . $file;
+    if ( file_exists( $path ) ) {
+        require_once $path;
+    }
+}
+return true;
+PHP;
+	}
+
+	function convert_to_wp_app_copy_directory( string $source, string $destination, array $skip = array() ): void {
+		convert_to_wp_app_mkdir( $destination );
+		$entries = scandir( $source );
+		if ( $entries === false ) {
+			throw new RuntimeException( "Could not read directory: {$source}" );
+		}
+		foreach ( $entries as $entry ) {
+			if ( $entry === '.' || $entry === '..' || in_array( $entry, $skip, true ) ) {
+				continue;
+			}
+			$source_path      = $source . '/' . $entry;
+			$destination_path = $destination . '/' . $entry;
+			if ( is_dir( $source_path ) && ! is_link( $source_path ) ) {
+				convert_to_wp_app_copy_directory( $source_path, $destination_path, $skip );
+			} else {
+				copy( $source_path, $destination_path );
+			}
+		}
+	}
+
+	function convert_to_wp_app_remove_directory( string $directory ): void {
+		if ( ! is_dir( $directory ) ) {
+			return;
+		}
+		$entries = scandir( $directory );
+		if ( $entries === false ) {
+			throw new RuntimeException( "Could not read directory: {$directory}" );
+		}
+		foreach ( $entries as $entry ) {
+			if ( $entry === '.' || $entry === '..' ) {
+				continue;
+			}
+			$path = $directory . '/' . $entry;
+			if ( is_dir( $path ) && ! is_link( $path ) ) {
+				convert_to_wp_app_remove_directory( $path );
+			} else {
+				unlink( $path );
+			}
+		}
+		rmdir( $directory );
+	}
+
+	function convert_to_wp_app_mkdir( string $directory ): void {
+		if ( ! is_dir( $directory ) && ! mkdir( $directory, 0777, true ) && ! is_dir( $directory ) ) {
+			throw new RuntimeException( "Could not create directory: {$directory}" );
+		}
+	}
+
+	function convert_to_wp_app_indent( string $content, string $indent ): string {
+		return $content === '' ? '' : $indent . str_replace( "\n", "\n" . $indent, $content );
+	}
+}
+
+if ( isset( $GLOBALS['convert_to_wp_app_playground_config'] ) && is_array( $GLOBALS['convert_to_wp_app_playground_config'] ) ) {
+	$GLOBALS['convert_to_wp_app_playground_result'] = convert_to_wp_app_playground( $GLOBALS['convert_to_wp_app_playground_config'] );
+}
