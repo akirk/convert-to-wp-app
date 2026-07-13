@@ -148,12 +148,6 @@
 			font-size: 0.9rem;
 		}
 		.summary strong { color: var(--text); }
-		.status {
-			min-height: 24px;
-			margin-top: 12px;
-			color: var(--success);
-			font-weight: 650;
-		}
 		.error {
 			display: none;
 			margin-top: 12px;
@@ -291,7 +285,6 @@
 						<button id="copyLink" type="button" disabled>Copy Playground Link</button>
 						<button id="copyBlueprint" type="button" disabled>Copy Blueprint JSON</button>
 					</div>
-					<div id="copyStatus" class="status" role="status" aria-live="polite"></div>
 					<div id="error" class="error"></div>
 
 					<details class="blueprint-details">
@@ -327,7 +320,6 @@
 		const playgroundLink = document.querySelector('#playgroundLink');
 		const copyLink = document.querySelector('#copyLink');
 		const copyBlueprint = document.querySelector('#copyBlueprint');
-		const copyStatus = document.querySelector('#copyStatus');
 
 		let currentPlaygroundUrl = '';
 		let currentBlueprintJson = '';
@@ -347,7 +339,6 @@
 
 		function update() {
 			error.style.display = 'none';
-			copyStatus.textContent = '';
 			try {
 				const inferred = parseGitHubPagesUrl(pagesUrl.value);
 				repo.value = inferred.url;
@@ -409,15 +400,16 @@
 			};
 		}
 
-		async function copyText(value, message) {
+		async function copyText(button, value) {
 			if (!value) {
 				return;
 			}
 			await navigator.clipboard.writeText(value);
-			copyStatus.textContent = message;
+			const originalText = button.textContent;
+			button.textContent = 'Copied!';
 			window.setTimeout(() => {
-				if (copyStatus.textContent === message) {
-					copyStatus.textContent = '';
+				if (button.textContent === 'Copied!') {
+					button.textContent = originalText;
 				}
 			}, 2500);
 		}
@@ -451,8 +443,8 @@
 			});
 		});
 
-		copyLink.addEventListener('click', () => copyText(currentPlaygroundUrl, 'Playground link copied.'));
-		copyBlueprint.addEventListener('click', () => copyText(currentBlueprintJson, 'Blueprint JSON copied.'));
+		copyLink.addEventListener('click', () => copyText(copyLink, currentPlaygroundUrl));
+		copyBlueprint.addEventListener('click', () => copyText(copyBlueprint, currentBlueprintJson));
 
 		update();
 	</script>
