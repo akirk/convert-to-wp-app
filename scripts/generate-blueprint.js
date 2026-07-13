@@ -43,7 +43,7 @@ Options:
   --plugin-name NAME         Human plugin/app name.
   --converter-ref REF        convert-to-wp-app ref. Default: main.
   --converter-ref-type TYPE  branch, tag, or commit. Default: branch.
-  --converter-repo URL       Converter repo. Default: https://github.com/akirk/convert-wp-app.
+  --converter-repo URL       Converter repo. Default: https://github.com/akirk/convert-to-wp-app.
   --playground-url           Print the playground.wordpress.net URL instead of JSON.
 `;
 }

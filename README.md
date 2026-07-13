@@ -10,8 +10,8 @@ link.
 
 For the generated blueprints to check out the converter from the same public
 location as the Pages site, publish this code to
-`https://github.com/akirk/convert-wp-app` and enable GitHub Pages there. The
-resulting site URL is `https://akirk.github.io/convert-wp-app/`.
+`https://github.com/akirk/convert-to-wp-app` and enable GitHub Pages there. The
+resulting site URL is `https://akirk.github.io/convert-to-wp-app/`.
 
 The generated Playground blueprint:
 
