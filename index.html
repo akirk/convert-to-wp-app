@@ -365,8 +365,9 @@
 
 		function renderBlueprint(input) {
 			const blueprint = buildBlueprint(input);
+			const playgroundBlueprint = buildBlueprint({ ...input, includeMyApps: true });
 			currentBlueprintJson = JSON.stringify(blueprint, null, '\t');
-			currentPlaygroundUrl = buildPlaygroundUrl(blueprint);
+			currentPlaygroundUrl = buildPlaygroundUrl(playgroundBlueprint);
 			blueprintOutput.value = currentBlueprintJson;
 			blueprintSummary.textContent = `View generated blueprint (${blueprint.steps.length} steps)`;
 		}

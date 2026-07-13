@@ -14,6 +14,7 @@ if ( ! function_exists( 'convert_to_wp_app_playground' ) ) {
 		$plugin_dir  = convert_to_wp_app_normalize_plugin_dir( $plugin_dir, $plugins_dir );
 		$plugin_name = trim( (string) ( $config['plugin_name'] ?? convert_to_wp_app_title( $slug ) ) );
 		$plugin_name = $plugin_name !== '' ? $plugin_name : convert_to_wp_app_title( $slug );
+		$plugin_author = trim( (string) ( $config['plugin_author'] ?? '' ) );
 		$url_path    = trim( (string) ( $config['url_path'] ?? $slug ), "/ \t\n\r\0\x0B" );
 		$url_path    = $url_path !== '' ? $url_path : $slug;
 		$allow_php_source = ! isset( $config['allow_php_source'] ) || ! in_array( (string) $config['allow_php_source'], array( '0', 'false', 'no' ), true );
@@ -50,7 +51,7 @@ if ( ! function_exists( 'convert_to_wp_app_playground' ) ) {
 
 		convert_to_wp_app_copy_wp_app_runtime( $wp_app_dir, $plugin_dir );
 		file_put_contents( $plugin_dir . '/vendor/autoload.php', convert_to_wp_app_autoload_php() );
-		file_put_contents( $plugin_dir . '/' . $slug . '.php', convert_to_wp_app_plugin_php( $slug, $plugin_name, $url_path ) );
+		file_put_contents( $plugin_dir . '/' . $slug . '.php', convert_to_wp_app_plugin_php( $slug, $plugin_name, $url_path, $plugin_author ) );
 
 		if ( function_exists( 'activate_plugin' ) ) {
 			$result = activate_plugin( $slug . '/' . $slug . '.php' );
@@ -389,8 +390,10 @@ PHP;
 		return in_array( $tag_name, $asset_attributes[ $attribute ] ?? array(), true );
 	}
 
-	function convert_to_wp_app_plugin_php( string $slug, string $plugin_name, string $url_path ): string {
+	function convert_to_wp_app_plugin_php( string $slug, string $plugin_name, string $url_path, string $plugin_author = '' ): string {
 		$plugin_name_header = str_replace( array( "\r", "\n" ), ' ', $plugin_name );
+		$author_header      = str_replace( array( "\r", "\n" ), ' ', $plugin_author );
+		$author_header      = $author_header !== '' ? " * Author: {$author_header}\n" : '';
 		$text_domain        = $slug;
 		$app_name           = var_export( $plugin_name, true );
 		$route              = var_export( $url_path, true );
@@ -400,7 +403,7 @@ PHP;
  * Plugin Name: {$plugin_name_header}
  * Description: A checked-out static one-pager converted into a WordPress app powered by WpApp.
  * Version: 1.0.0
- * Text Domain: {$text_domain}
+{$author_header} * Text Domain: {$text_domain}
  * Requires PHP: 7.4
  */
 
