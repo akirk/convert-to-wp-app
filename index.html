@@ -231,63 +231,12 @@
 
 						<div class="row">
 							<div>
-								<label for="ref">Git ref</label>
-								<input id="ref" name="ref" placeholder="HEAD">
-							</div>
-							<div>
-								<label for="refType">Ref type</label>
-								<select id="refType" name="refType">
-									<option value="">HEAD or commit</option>
-									<option value="branch">Branch</option>
-									<option value="tag">Tag</option>
-									<option value="commit">Commit</option>
-								</select>
-							</div>
-						</div>
-
-						<div class="row">
-							<div>
-								<label for="builtRef">Built site ref</label>
-								<input id="builtRef" name="builtRef" placeholder="gh-pages">
-							</div>
-							<div>
-								<label for="builtRefType">Built ref type</label>
-								<select id="builtRefType" name="builtRefType">
-									<option value="">Use source checkout</option>
-									<option value="branch">Branch</option>
-									<option value="tag">Tag</option>
-									<option value="commit">Commit</option>
-								</select>
-							</div>
-						</div>
-
-						<label for="builtPath">Built site path</label>
-						<input id="builtPath" name="builtPath" placeholder="optional subdirectory">
-						<p class="hint">Use this only when the deployable files are available from another branch, tag, commit, or subdirectory.</p>
-
-						<div class="row">
-							<div>
 								<label for="slug">Plugin slug</label>
 								<input id="slug" name="slug" placeholder="repo-name">
 							</div>
 							<div>
 								<label for="pluginName">Plugin name</label>
 								<input id="pluginName" name="pluginName" placeholder="Repo Name">
-							</div>
-						</div>
-
-						<div class="row">
-							<div>
-								<label for="converterRef">Converter ref</label>
-								<input id="converterRef" name="converterRef" placeholder="main">
-							</div>
-							<div>
-								<label for="converterRefType">Converter ref type</label>
-								<select id="converterRefType" name="converterRefType">
-									<option value="branch">Branch</option>
-									<option value="tag">Tag</option>
-									<option value="commit">Commit</option>
-								</select>
 							</div>
 						</div>
 					</details>
@@ -321,15 +270,8 @@
 		const form = document.querySelector('#generator');
 		const pagesUrl = document.querySelector('#pagesUrl');
 		const repo = document.querySelector('#repo');
-		const ref = document.querySelector('#ref');
-		const refType = document.querySelector('#refType');
-		const builtRef = document.querySelector('#builtRef');
-		const builtRefType = document.querySelector('#builtRefType');
-		const builtPath = document.querySelector('#builtPath');
 		const slug = document.querySelector('#slug');
 		const pluginName = document.querySelector('#pluginName');
-		const converterRef = document.querySelector('#converterRef');
-		const converterRefType = document.querySelector('#converterRefType');
 		const error = document.querySelector('#error');
 		const summary = document.querySelector('#summary');
 		const repoSummary = document.querySelector('#repoSummary');
@@ -348,15 +290,8 @@
 		const state = new URLSearchParams(window.location.search);
 		pagesUrl.value = state.get('pagesUrl') || state.get('pages') || 'https://jonathanbossenger.github.io/times-table-tester/';
 		repo.value = state.get('repo') || '';
-		ref.value = state.get('ref') || 'HEAD';
-		refType.value = state.get('refType') || '';
-		builtRef.value = state.get('builtRef') || '';
-		builtRefType.value = state.get('builtRefType') || '';
-		builtPath.value = state.get('builtPath') || '';
 		slug.value = state.get('slug') || '';
 		pluginName.value = state.get('pluginName') || '';
-		converterRef.value = state.get('converterRef') || 'main';
-		converterRefType.value = state.get('converterRefType') || 'branch';
 
 		function update() {
 			error.style.display = 'none';
@@ -378,15 +313,8 @@
 
 				const params = new URLSearchParams({
 					pagesUrl: inferred.pagesUrl,
-					ref: ref.value || 'HEAD',
-					refType: refType.value,
-					builtRef: builtRef.value,
-					builtRefType: builtRefType.value,
-					builtPath: builtPath.value,
 					slug: selectedSlug,
-					pluginName: selectedPluginName,
-					converterRef: converterRef.value || 'main',
-					converterRefType: converterRefType.value || 'branch'
+					pluginName: selectedPluginName
 				});
 				window.history.replaceState(null, '', `?${params.toString()}`);
 			} catch (err) {
@@ -419,15 +347,15 @@
 			const selectedSlug = slug.value || toSlug(inferred.name);
 			return {
 				repo: repo.value,
-				ref: ref.value || 'HEAD',
-				refType: refType.value,
-				builtRef: builtRef.value,
-				builtRefType: builtRefType.value,
-				builtPath: builtPath.value,
+				ref: 'HEAD',
+				refType: '',
+				builtRef: '',
+				builtRefType: '',
+				builtPath: '',
 				slug: selectedSlug,
 				pluginName: pluginName.value,
-				converterRef: converterRef.value || 'main',
-				converterRefType: converterRefType.value || 'branch',
+				converterRef: 'main',
+				converterRefType: 'branch',
 				allowPhpSource: false,
 				staticFolderName: `${inferred.owner}-${selectedSlug}`,
 				sourcePublicPath: inferred.basePath,
@@ -763,7 +691,7 @@
 			}
 		});
 
-		[pagesUrl, ref, refType, builtRef, builtRefType, builtPath, slug, pluginName, converterRef, converterRefType].forEach((field) => {
+		[pagesUrl, slug, pluginName].forEach((field) => {
 			field.addEventListener('input', update);
 			field.addEventListener('change', update);
 		});
@@ -773,11 +701,6 @@
 				const inferred = parseGitHubPagesUrl(button.dataset.pagesUrl);
 				pagesUrl.value = inferred.pagesUrl;
 				repo.value = inferred.url;
-				ref.value = 'HEAD';
-				refType.value = '';
-				builtRef.value = '';
-				builtRefType.value = '';
-				builtPath.value = '';
 				slug.value = toSlug(inferred.name);
 				pluginName.value = toTitle(inferred.name);
 				update();
