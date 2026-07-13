@@ -16,7 +16,8 @@ if ( ! function_exists( 'convert_to_wp_app_playground' ) ) {
 		$plugin_name = $plugin_name !== '' ? $plugin_name : convert_to_wp_app_title( $slug );
 		$url_path    = trim( (string) ( $config['url_path'] ?? $slug ), "/ \t\n\r\0\x0B" );
 		$url_path    = $url_path !== '' ? $url_path : $slug;
-		$source      = convert_to_wp_app_resolve_source( $config['source_build_dir'] ?? '', $plugin_dir );
+		$allow_php_source = ! isset( $config['allow_php_source'] ) || ! in_array( (string) $config['allow_php_source'], array( '0', 'false', 'no' ), true );
+		$source      = convert_to_wp_app_resolve_source( $config['source_build_dir'] ?? '', $plugin_dir, $allow_php_source );
 		$source_dir  = $source['dir'];
 		$wp_app_dir  = convert_to_wp_app_normalize_dir( $config['wp_app_source_dir'] ?? $plugins_dir . '/__wp_app_runtime' );
 
@@ -104,7 +105,7 @@ if ( ! function_exists( 'convert_to_wp_app_playground' ) ) {
 		return $path;
 	}
 
-	function convert_to_wp_app_resolve_source( string $source_build_dir, string $plugin_dir ): array {
+	function convert_to_wp_app_resolve_source( string $source_build_dir, string $plugin_dir, bool $allow_php_source = true ): array {
 		$candidates = array();
 		if ( $source_build_dir !== '' ) {
 			$candidates[] = rtrim( str_replace( '\\', '/', $source_build_dir ), '/' );
@@ -128,14 +129,16 @@ if ( ! function_exists( 'convert_to_wp_app_playground' ) ) {
 			}
 		}
 
-		foreach ( $candidates as $candidate ) {
-			$entry = convert_to_wp_app_find_php_onepager_entry( $candidate );
-			if ( $entry !== null ) {
-				return array(
-					'type'  => 'php-onepager',
-					'dir'   => $candidate,
-					'entry' => $entry,
-				);
+		if ( $allow_php_source ) {
+			foreach ( $candidates as $candidate ) {
+				$entry = convert_to_wp_app_find_php_onepager_entry( $candidate );
+				if ( $entry !== null ) {
+					return array(
+						'type'  => 'php-onepager',
+						'dir'   => $candidate,
+						'entry' => $entry,
+					);
+				}
 			}
 		}
 

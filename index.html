@@ -148,6 +148,23 @@
 			font-size: 0.9rem;
 		}
 		.summary strong { color: var(--text); }
+		.analysis {
+			margin-top: 14px;
+			padding: 12px;
+			border: 1px solid var(--border);
+			border-radius: 6px;
+			background: #fbfcfe;
+			color: var(--muted);
+			font-size: 0.9rem;
+		}
+		.analysis[data-state="ok"] {
+			border-color: rgba(6, 118, 71, 0.35);
+			color: var(--success);
+		}
+		.analysis[data-state="error"] {
+			border-color: rgba(180, 35, 24, 0.35);
+			color: var(--error);
+		}
 		.error {
 			display: none;
 			margin-top: 12px;
@@ -206,6 +223,7 @@
 						<div><strong>Repository</strong> <span id="repoSummary"></span></div>
 						<div><strong>Plugin</strong> <span id="pluginSummary"></span></div>
 					</div>
+					<div id="analysis" class="analysis hidden" data-state="idle"></div>
 
 					<details>
 						<summary>Advanced options</summary>
@@ -316,6 +334,7 @@
 		const summary = document.querySelector('#summary');
 		const repoSummary = document.querySelector('#repoSummary');
 		const pluginSummary = document.querySelector('#pluginSummary');
+		const analysis = document.querySelector('#analysis');
 		const blueprintOutput = document.querySelector('#blueprint');
 		const playgroundLink = document.querySelector('#playgroundLink');
 		const copyLink = document.querySelector('#copyLink');
@@ -323,6 +342,7 @@
 
 		let currentPlaygroundUrl = '';
 		let currentBlueprintJson = '';
+		let analyzeRequestId = 0;
 
 		const state = new URLSearchParams(window.location.search);
 		pagesUrl.value = state.get('pagesUrl') || state.get('pages') || 'https://jonathanbossenger.github.io/times-table-tester/';
@@ -351,13 +371,11 @@
 				currentPlaygroundUrl = buildPlaygroundUrl(blueprint);
 
 				blueprintOutput.value = currentBlueprintJson;
-				playgroundLink.href = currentPlaygroundUrl;
-				playgroundLink.setAttribute('aria-disabled', 'false');
-				copyLink.disabled = false;
-				copyBlueprint.disabled = false;
+				setPlayable(false);
 				summary.classList.remove('hidden');
 				repoSummary.textContent = parsed.url;
 				pluginSummary.textContent = `${selectedPluginName} at /${selectedSlug}/`;
+				analyzePagesInput(inferred, getInput());
 
 				const params = new URLSearchParams({
 					pagesUrl: inferred.pagesUrl,
@@ -375,14 +393,19 @@
 			} catch (err) {
 				currentPlaygroundUrl = '';
 				currentBlueprintJson = '';
-				playgroundLink.href = '#';
-				playgroundLink.setAttribute('aria-disabled', 'true');
-				copyLink.disabled = true;
-				copyBlueprint.disabled = true;
+				setPlayable(false);
 				summary.classList.add('hidden');
+				analysis.classList.add('hidden');
 				error.textContent = err.message;
 				error.style.display = 'block';
 			}
+		}
+
+		function setPlayable(enabled) {
+			playgroundLink.href = enabled ? currentPlaygroundUrl : '#';
+			playgroundLink.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+			copyLink.disabled = !enabled;
+			copyBlueprint.disabled = !enabled;
 		}
 
 		function getInput() {
@@ -397,7 +420,115 @@
 				pluginName: pluginName.value,
 				converterRef: converterRef.value || 'main',
 				converterRefType: converterRefType.value || 'branch',
+				allowPhpSource: false,
 			};
+		}
+
+		async function analyzePagesInput(inferred, input) {
+			const requestId = ++analyzeRequestId;
+			analysis.classList.remove('hidden');
+			analysis.dataset.state = 'idle';
+			analysis.textContent = 'Checking whether this Pages app is available from Git...';
+			try {
+				const result = await analyzeGitHubPages(inferred, input);
+				if (requestId !== analyzeRequestId) {
+					return;
+				}
+				analysis.dataset.state = result.ok ? 'ok' : 'error';
+				analysis.textContent = result.message;
+				setPlayable(result.ok);
+			} catch (err) {
+				if (requestId !== analyzeRequestId) {
+					return;
+				}
+				analysis.dataset.state = 'error';
+				analysis.textContent = `Could not analyze this Pages app: ${err.message}`;
+				setPlayable(false);
+			}
+		}
+
+		async function analyzeGitHubPages(inferred, input) {
+			if (input.builtRef || input.builtPath) {
+				return {
+					ok: true,
+					message: 'Using the built ref/path you provided. The blueprint will import those files with git:directory.',
+				};
+			}
+
+			const repoApi = `https://api.github.com/repos/${inferred.owner}/${inferred.name}`;
+			const [liveHtml, repoRoot, workflows] = await Promise.all([
+				fetchText(inferred.pagesUrl),
+				fetchJson(`${repoApi}/contents?ref=${encodeURIComponent(input.ref || 'HEAD')}`).catch(() => []),
+				fetchJson(`${repoApi}/contents/.github/workflows?ref=${encodeURIComponent(input.ref || 'HEAD')}`).catch(() => []),
+			]);
+
+			const rootNames = Array.isArray(repoRoot) ? repoRoot.map((item) => item.name) : [];
+			const candidatePaths = ['build/index.html', 'dist/index.html', 'index.html'];
+			for (const path of candidatePaths) {
+				const candidate = await fetchRaw(inferred, input.ref || 'HEAD', path).catch(() => '');
+				if (!candidate || !isDeployableHtml(candidate)) {
+					continue;
+				}
+				if (htmlLooksEquivalent(liveHtml, candidate) || path !== 'index.html') {
+					return {
+						ok: true,
+						message: `Found deployable files in Git at ${path}. The blueprint can import them directly.`,
+					};
+				}
+			}
+
+			const workflowFiles = Array.isArray(workflows) ? workflows.filter((item) => item.type === 'file') : [];
+			const workflowTexts = await Promise.all(
+				workflowFiles.map((item) => fetchText(item.download_url).catch(() => ''))
+			);
+			const usesPagesArtifact = workflowTexts.some((text) => /upload-pages-artifact|deploy-pages/i.test(text));
+			const liveLooksBuilt = /<script\b[^>]+(?:static\/js|\/assets\/|assets\/)|<link\b[^>]+(?:static\/css|\/assets\/|assets\/)/i.test(liveHtml);
+			const hasSourceBuildHints = rootNames.includes('package.json') || rootNames.includes('vite.config.ts') || rootNames.includes('vite.config.js');
+
+			if (usesPagesArtifact || liveLooksBuilt || hasSourceBuildHints) {
+				return {
+					ok: false,
+					message: 'This Pages site appears to be built by GitHub Actions into a Pages artifact. That artifact is not available through git:directory, so the blueprint would not match the live site. Publish the build output to a branch/path and enter it in Advanced options.',
+				};
+			}
+
+			return {
+				ok: false,
+				message: 'I could not find deployable static files in Git for this Pages URL. Add a built branch/path in Advanced options before opening Playground.',
+			};
+		}
+
+		async function fetchJson(url) {
+			const response = await fetch(url, { headers: { Accept: 'application/vnd.github+json' } });
+			if (!response.ok) {
+				throw new Error(`${response.status} ${response.statusText}`);
+			}
+			return response.json();
+		}
+
+		async function fetchText(url) {
+			const response = await fetch(url);
+			if (!response.ok) {
+				throw new Error(`${response.status} ${response.statusText}`);
+			}
+			return response.text();
+		}
+
+		function fetchRaw(inferred, refValue, path) {
+			const refPath = encodeURIComponent(refValue).replace(/%2F/g, '/');
+			return fetchText(`https://raw.githubusercontent.com/${inferred.owner}/${inferred.name}/${refPath}/${path}`);
+		}
+
+		function isDeployableHtml(html) {
+			return html.includes('<html') && !html.includes('%PUBLIC_URL%') && !/\b(?:src|href)=['"]\/?src\//i.test(html);
+		}
+
+		function htmlLooksEquivalent(a, b) {
+			return normalizeHtml(a) === normalizeHtml(b);
+		}
+
+		function normalizeHtml(html) {
+			return String(html).replace(/\s+/g, ' ').replace(/="\.\//g, '="').replace(/='.\//g, "='").trim();
 		}
 
 		async function copyText(button, value) {
