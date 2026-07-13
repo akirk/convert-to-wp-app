@@ -105,11 +105,29 @@
 			grid-template-columns: 1fr 1fr;
 			gap: 12px;
 		}
-		.actions, .examples {
+		.actions {
 			display: flex;
 			flex-wrap: wrap;
 			gap: 10px;
 			margin-top: 16px;
+		}
+		.examples {
+			display: grid;
+			gap: 8px;
+			margin: 16px 0 0;
+			padding-left: 20px;
+		}
+		.examples li {
+			padding-left: 2px;
+		}
+		.examples a {
+			color: var(--accent-dark);
+			font-weight: 650;
+		}
+		.examples .external {
+			margin-left: 8px;
+			color: var(--muted);
+			font-weight: 500;
 		}
 		button, .button {
 			display: inline-flex;
@@ -195,7 +213,7 @@
 			main { padding: 28px 0; }
 			.row { grid-template-columns: 1fr; }
 			.step { gap: 10px; }
-			.actions, .examples { flex-direction: column; }
+			.actions { flex-direction: column; }
 			button, .button { width: 100%; }
 		}
 	</style>
@@ -214,10 +232,16 @@
 					<input id="pagesUrl" name="pagesUrl" required placeholder="https://owner.github.io/repo/">
 					<p class="hint">The matching GitHub repository is inferred from the Pages URL.</p>
 
-					<div class="examples">
-						<button class="example" type="button" data-pages-url="https://jonathanbossenger.github.io/times-table-tester/">Times Table Tester</button>
-						<button class="example" type="button" data-pages-url="https://ashfame.github.io/sojourn/">Sojourn</button>
-					</div>
+					<ul class="examples">
+						<li>
+							<a class="example" href="?pagesUrl=https%3A%2F%2Fjonathanbossenger.github.io%2Ftimes-table-tester%2F" data-pages-url="https://jonathanbossenger.github.io/times-table-tester/">Times Table Tester</a>
+							<a class="external" href="https://jonathanbossenger.github.io/times-table-tester/" target="_blank" rel="noopener">View app</a>
+						</li>
+						<li>
+							<a class="example" href="?pagesUrl=https%3A%2F%2Fashfame.github.io%2Fsojourn%2F" data-pages-url="https://ashfame.github.io/sojourn/">Sojourn</a>
+							<a class="external" href="https://ashfame.github.io/sojourn/" target="_blank" rel="noopener">View app</a>
+						</li>
+					</ul>
 
 					<div id="summary" class="summary hidden">
 						<div><strong>Repository</strong> <span id="repoSummary"></span></div>
@@ -433,7 +457,7 @@
 				const snapshotFiles = await crawlPagesSnapshot(inferred, liveHtml);
 				return {
 					ok: true,
-					message: `This Pages site is a workflow-built artifact. I found ${snapshotFiles.length} deployed file${snapshotFiles.length === 1 ? '' : 's'} to snapshot with writeFile URL resources during Playground setup.`,
+					message: `Found ${snapshotFiles.length} deployed file${snapshotFiles.length === 1 ? '' : 's'} to snapshot during Playground setup.`,
 					input: {
 						...input,
 						snapshotFiles,
@@ -696,9 +720,10 @@
 			field.addEventListener('change', update);
 		});
 
-		document.querySelectorAll('.example').forEach((button) => {
-			button.addEventListener('click', () => {
-				const inferred = parseGitHubPagesUrl(button.dataset.pagesUrl);
+		document.querySelectorAll('.example').forEach((link) => {
+			link.addEventListener('click', (event) => {
+				event.preventDefault();
+				const inferred = parseGitHubPagesUrl(link.dataset.pagesUrl);
 				pagesUrl.value = inferred.pagesUrl;
 				repo.value = inferred.url;
 				slug.value = toSlug(inferred.name);
