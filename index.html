@@ -114,8 +114,13 @@
 		.examples {
 			display: grid;
 			gap: 8px;
-			margin: 16px 0 0;
+			margin: 6px 0 0;
 			padding-left: 20px;
+		}
+		.examples-heading {
+			margin: 16px 0 0;
+			font-weight: 700;
+			font-size: 0.9rem;
 		}
 		.examples li {
 			padding-left: 2px;
@@ -236,6 +241,7 @@
 					<input id="pagesUrl" name="pagesUrl" required placeholder="https://owner.github.io/repo/">
 					<p class="hint">The matching GitHub repository is inferred from the Pages URL.</p>
 
+					<div class="examples-heading">Load an example:</div>
 					<ul id="examples" class="examples"></ul>
 
 					<div id="summary" class="summary hidden">
@@ -274,7 +280,7 @@
 					<div id="error" class="error"></div>
 
 					<details class="blueprint-details">
-						<summary>View generated blueprint</summary>
+						<summary id="blueprintSummary">View generated blueprint</summary>
 						<label for="blueprint">Blueprint JSON</label>
 						<textarea id="blueprint" readonly></textarea>
 					</details>
@@ -297,6 +303,7 @@
 		const pluginSummary = document.querySelector('#pluginSummary');
 		const analysis = document.querySelector('#analysis');
 		const blueprintOutput = document.querySelector('#blueprint');
+		const blueprintSummary = document.querySelector('#blueprintSummary');
 		const playgroundLink = document.querySelector('#playgroundLink');
 		const copyLink = document.querySelector('#copyLink');
 		const copyBlueprint = document.querySelector('#copyBlueprint');
@@ -361,6 +368,7 @@
 			currentBlueprintJson = JSON.stringify(blueprint, null, '\t');
 			currentPlaygroundUrl = buildPlaygroundUrl(blueprint);
 			blueprintOutput.value = currentBlueprintJson;
+			blueprintSummary.textContent = `View generated blueprint (${blueprint.steps.length} steps)`;
 		}
 
 		function getInput(inferred) {
