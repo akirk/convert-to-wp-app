@@ -22,10 +22,8 @@ if ( ! function_exists( 'convert_to_wp_app_playground' ) ) {
 		$source_dir  = $source['dir'];
 		$wp_app_dir  = convert_to_wp_app_normalize_dir( $config['wp_app_source_dir'] ?? $plugins_dir . '/__wp_app_runtime' );
 
-		if ( ! is_dir( $plugin_dir ) ) {
-			throw new RuntimeException( "Plugin directory does not exist: {$plugin_dir}" );
-		}
-		if ( ! is_dir( $wp_app_dir . '/src' ) ) {
+		convert_to_wp_app_mkdir( $plugin_dir );
+		if ( ! is_dir( $wp_app_dir . '/src' ) && ! is_file( $wp_app_dir . '/class-wpapp.php' ) ) {
 			throw new RuntimeException( "WpApp source directory does not exist: {$wp_app_dir}" );
 		}
 
@@ -64,6 +62,8 @@ if ( ! function_exists( 'convert_to_wp_app_playground' ) ) {
 		if ( function_exists( 'flush_rewrite_rules' ) ) {
 			flush_rewrite_rules();
 		}
+
+		convert_to_wp_app_cleanup_dirs( $config['cleanup_dirs'] ?? array(), $plugins_dir, $plugin_dir );
 
 		return array(
 			'slug'       => $slug,
@@ -433,7 +433,23 @@ PHP;
 		if ( is_dir( $destination ) ) {
 			convert_to_wp_app_remove_directory( $destination );
 		}
-		convert_to_wp_app_copy_directory( $source, $destination, array( '.git', 'vendor', 'tests' ) );
+		convert_to_wp_app_mkdir( $destination );
+		$source_src = is_dir( $source . '/src' ) ? $source . '/src' : $source;
+		convert_to_wp_app_copy_directory( $source_src, $destination . '/src' );
+	}
+
+	function convert_to_wp_app_cleanup_dirs( $directories, string $plugins_dir, string $plugin_dir ): void {
+		if ( ! is_array( $directories ) ) {
+			return;
+		}
+		$plugin_dir = convert_to_wp_app_normalize_dir( $plugin_dir );
+		foreach ( $directories as $directory ) {
+			$directory = convert_to_wp_app_normalize_plugin_dir( (string) $directory, $plugins_dir );
+			if ( $directory === $plugin_dir || strpos( $plugin_dir . '/', $directory . '/' ) === 0 ) {
+				continue;
+			}
+			convert_to_wp_app_remove_directory( $directory );
+		}
 	}
 
 	function convert_to_wp_app_autoload_php(): string {
