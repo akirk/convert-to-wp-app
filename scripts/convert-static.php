@@ -18,6 +18,7 @@ Options:
   --slug SLUG             Plugin slug. Defaults to plugin directory name.
   --plugin-name NAME      Human plugin name. Defaults to title-cased slug.
   --url-path PATH         WpApp route. Defaults to slug.
+  --source-public-path P  Public URL path prefix to strip from asset URLs.
   --plugins-dir PATH      Parent plugins directory. Defaults to plugin-dir parent.
   --help                  Show this help.
 

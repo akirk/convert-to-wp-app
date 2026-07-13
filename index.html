@@ -342,6 +342,7 @@
 
 		let currentPlaygroundUrl = '';
 		let currentBlueprintJson = '';
+		let currentInput = null;
 		let analyzeRequestId = 0;
 
 		const state = new URLSearchParams(window.location.search);
@@ -366,16 +367,14 @@
 				const parsed = parseGitHubRepo(repo.value);
 				const selectedSlug = slug.value || toSlug(parsed.name);
 				const selectedPluginName = pluginName.value || toTitle(parsed.name);
-				const blueprint = buildBlueprint(getInput());
-				currentBlueprintJson = JSON.stringify(blueprint, null, '\t');
-				currentPlaygroundUrl = buildPlaygroundUrl(blueprint);
+				currentInput = getInput(inferred);
+				renderBlueprint(currentInput);
 
-				blueprintOutput.value = currentBlueprintJson;
 				setPlayable(false);
 				summary.classList.remove('hidden');
 				repoSummary.textContent = parsed.url;
 				pluginSummary.textContent = `${selectedPluginName} at /${selectedSlug}/`;
-				analyzePagesInput(inferred, getInput());
+				analyzePagesInput(inferred, currentInput);
 
 				const params = new URLSearchParams({
 					pagesUrl: inferred.pagesUrl,
@@ -393,6 +392,7 @@
 			} catch (err) {
 				currentPlaygroundUrl = '';
 				currentBlueprintJson = '';
+				currentInput = null;
 				setPlayable(false);
 				summary.classList.add('hidden');
 				analysis.classList.add('hidden');
@@ -408,7 +408,15 @@
 			copyBlueprint.disabled = !enabled;
 		}
 
-		function getInput() {
+		function renderBlueprint(input) {
+			const blueprint = buildBlueprint(input);
+			currentBlueprintJson = JSON.stringify(blueprint, null, '\t');
+			currentPlaygroundUrl = buildPlaygroundUrl(blueprint);
+			blueprintOutput.value = currentBlueprintJson;
+		}
+
+		function getInput(inferred) {
+			const selectedSlug = slug.value || toSlug(inferred.name);
 			return {
 				repo: repo.value,
 				ref: ref.value || 'HEAD',
@@ -416,11 +424,13 @@
 				builtRef: builtRef.value,
 				builtRefType: builtRefType.value,
 				builtPath: builtPath.value,
-				slug: slug.value,
+				slug: selectedSlug,
 				pluginName: pluginName.value,
 				converterRef: converterRef.value || 'main',
 				converterRefType: converterRefType.value || 'branch',
 				allowPhpSource: false,
+				staticFolderName: `${inferred.owner}-${selectedSlug}`,
+				sourcePublicPath: inferred.basePath,
 			};
 		}
 
@@ -433,6 +443,10 @@
 				const result = await analyzeGitHubPages(inferred, input);
 				if (requestId !== analyzeRequestId) {
 					return;
+				}
+				if (result.input) {
+					currentInput = result.input;
+					renderBlueprint(currentInput);
 				}
 				analysis.dataset.state = result.ok ? 'ok' : 'error';
 				analysis.textContent = result.message;
@@ -452,6 +466,7 @@
 				return {
 					ok: true,
 					message: 'Using the built ref/path you provided. The blueprint will import those files with git:directory.',
+					input,
 				};
 			}
 
@@ -473,6 +488,7 @@
 					return {
 						ok: true,
 						message: `Found deployable files in Git at ${path}. The blueprint can import them directly.`,
+						input,
 					};
 				}
 			}
@@ -486,9 +502,14 @@
 			const hasSourceBuildHints = rootNames.includes('package.json') || rootNames.includes('vite.config.ts') || rootNames.includes('vite.config.js');
 
 			if (usesPagesArtifact || liveLooksBuilt || hasSourceBuildHints) {
+				const snapshotFiles = await crawlPagesSnapshot(inferred, liveHtml);
 				return {
-					ok: false,
-					message: 'This Pages site appears to be built by GitHub Actions into a Pages artifact. That artifact is not available through git:directory, so the blueprint would not match the live site. Publish the build output to a branch/path and enter it in Advanced options.',
+					ok: true,
+					message: `This Pages site is a workflow-built artifact. I found ${snapshotFiles.length} deployed file${snapshotFiles.length === 1 ? '' : 's'} to snapshot with writeFile URL resources during Playground setup.`,
+					input: {
+						...input,
+						snapshotFiles,
+					},
 				};
 			}
 
@@ -529,6 +550,174 @@
 
 		function normalizeHtml(html) {
 			return String(html).replace(/\s+/g, ' ').replace(/="\.\//g, '="').replace(/='.\//g, "='").trim();
+		}
+
+		async function crawlPagesSnapshot(inferred, liveHtml) {
+			const baseUrl = new URL(inferred.pagesUrl);
+			const files = new Map();
+			addSnapshotFile(files, baseUrl, new URL('index.html', baseUrl));
+			const htmlAssetUrls = extractHtmlAssetUrls(liveHtml, baseUrl);
+			for (const url of htmlAssetUrls) {
+				addSnapshotFile(files, baseUrl, url);
+			}
+
+			const crawlQueue = [...htmlAssetUrls];
+			const seen = new Set(crawlQueue.map((url) => url.href));
+			for (const url of crawlQueue) {
+				const path = pathnameRelativeToBase(baseUrl, url);
+				if (!path) {
+					continue;
+				}
+				if (path.endsWith('.css')) {
+					const css = await fetchText(url.href).catch(() => '');
+					for (const assetUrl of extractCssAssetUrls(css, url, baseUrl)) {
+						if (!seen.has(assetUrl.href)) {
+							seen.add(assetUrl.href);
+							crawlQueue.push(assetUrl);
+						}
+						addSnapshotFile(files, baseUrl, assetUrl);
+					}
+				}
+				if (path.endsWith('.js')) {
+					const js = await fetchText(url.href).catch(() => '');
+					for (const assetUrl of extractJsAssetUrls(js, baseUrl)) {
+						if (!seen.has(assetUrl.href)) {
+							seen.add(assetUrl.href);
+							crawlQueue.push(assetUrl);
+						}
+						addSnapshotFile(files, baseUrl, assetUrl);
+					}
+				}
+				if (path.endsWith('manifest.json') || path.endsWith('.webmanifest')) {
+					const manifest = await fetchJson(url.href).catch(() => null);
+					for (const assetUrl of extractManifestAssetUrls(manifest, url, baseUrl)) {
+						addSnapshotFile(files, baseUrl, assetUrl);
+					}
+				}
+			}
+
+			const snapshotFiles = [...files.values()].sort((a, b) => a.path.localeCompare(b.path));
+			if (!snapshotFiles.some((file) => file.path === 'index.html')) {
+				throw new Error('Could not snapshot index.html.');
+			}
+			return snapshotFiles;
+		}
+
+		function addSnapshotFile(files, baseUrl, url) {
+			if (!isSamePagesAppUrl(baseUrl, url)) {
+				return;
+			}
+			const path = pathnameRelativeToBase(baseUrl, url);
+			if (!path || path.endsWith('/')) {
+				return;
+			}
+			files.set(path, { path, url: url.href.replace(/#.*$/, '') });
+		}
+
+		function extractHtmlAssetUrls(html, baseUrl) {
+			const urls = [];
+			const doc = new DOMParser().parseFromString(html, 'text/html');
+			for (const element of doc.querySelectorAll('[src], [href], [content]')) {
+				for (const attr of ['src', 'href', 'content']) {
+					const value = element.getAttribute(attr);
+					if (!value) {
+						continue;
+					}
+					if (attr === 'content' && !/\.(?:png|jpe?g|gif|webp|svg|ico)(?:[?#]|$)/i.test(value)) {
+						continue;
+					}
+					for (const part of splitSrcset(value)) {
+						const url = toSameAppUrl(part, baseUrl, baseUrl);
+						if (url) {
+							urls.push(url);
+						}
+					}
+				}
+			}
+			return uniqueUrls(urls);
+		}
+
+		function extractCssAssetUrls(css, cssUrl, baseUrl) {
+			const urls = [];
+			const pattern = /url\(\s*(['"]?)([^'")]+)\1\s*\)/g;
+			let match;
+			while ((match = pattern.exec(css))) {
+				const url = toSameAppUrl(match[2], cssUrl, baseUrl);
+				if (url) {
+					urls.push(url);
+				}
+			}
+			return uniqueUrls(urls);
+		}
+
+		function extractJsAssetUrls(js, baseUrl) {
+			const urls = [];
+			const pattern = /['"`]((?:\.\/|\/)[^'"`]+?\.(?:png|jpe?g|gif|webp|svg|ico|json|wasm|woff2?|ttf|otf|mp3|mp4|webm|pdf))(?:[?#][^'"`]*)?['"`]/g;
+			let match;
+			while ((match = pattern.exec(js))) {
+				const url = toSameAppUrl(match[1], baseUrl, baseUrl);
+				if (url) {
+					urls.push(url);
+				}
+			}
+			return uniqueUrls(urls);
+		}
+
+		function extractManifestAssetUrls(manifest, manifestUrl, baseUrl) {
+			if (!manifest || typeof manifest !== 'object') {
+				return [];
+			}
+			const urls = [];
+			for (const icon of manifest.icons || []) {
+				const url = toSameAppUrl(icon.src, manifestUrl, baseUrl);
+				if (url) {
+					urls.push(url);
+				}
+			}
+			for (const key of ['start_url', 'scope']) {
+				const url = toSameAppUrl(manifest[key], manifestUrl, baseUrl);
+				if (url && !url.pathname.endsWith('/')) {
+					urls.push(url);
+				}
+			}
+			return uniqueUrls(urls);
+		}
+
+		function splitSrcset(value) {
+			return String(value).split(',').map((part) => part.trim().split(/\s+/)[0]).filter(Boolean);
+		}
+
+		function toSameAppUrl(value, fromUrl, baseUrl) {
+			if (!value || /^(?:data:|blob:|mailto:|tel:|#)/i.test(value)) {
+				return null;
+			}
+			try {
+				const url = new URL(value, fromUrl);
+				return isSamePagesAppUrl(baseUrl, url) ? url : null;
+			} catch {
+				return null;
+			}
+		}
+
+		function isSamePagesAppUrl(baseUrl, url) {
+			return url.origin === baseUrl.origin && url.pathname.startsWith(baseUrl.pathname);
+		}
+
+		function pathnameRelativeToBase(baseUrl, url) {
+			const path = decodeURIComponent(url.pathname.slice(baseUrl.pathname.length));
+			return path.replace(/^\/+/, '') || (url.pathname === baseUrl.pathname ? 'index.html' : '');
+		}
+
+		function uniqueUrls(urls) {
+			const seen = new Set();
+			return urls.filter((url) => {
+				const key = url.href.replace(/#.*$/, '');
+				if (seen.has(key)) {
+					return false;
+				}
+				seen.add(key);
+				return true;
+			});
 		}
 
 		async function copyText(button, value) {

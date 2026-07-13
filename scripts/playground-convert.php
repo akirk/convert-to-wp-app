@@ -17,6 +17,7 @@ if ( ! function_exists( 'convert_to_wp_app_playground' ) ) {
 		$url_path    = trim( (string) ( $config['url_path'] ?? $slug ), "/ \t\n\r\0\x0B" );
 		$url_path    = $url_path !== '' ? $url_path : $slug;
 		$allow_php_source = ! isset( $config['allow_php_source'] ) || ! in_array( (string) $config['allow_php_source'], array( '0', 'false', 'no' ), true );
+		$source_public_path = trim( (string) ( $config['source_public_path'] ?? '' ) );
 		$source      = convert_to_wp_app_resolve_source( $config['source_build_dir'] ?? '', $plugin_dir, $allow_php_source );
 		$source_dir  = $source['dir'];
 		$wp_app_dir  = convert_to_wp_app_normalize_dir( $config['wp_app_source_dir'] ?? $plugins_dir . '/__wp_app_runtime' );
@@ -44,7 +45,7 @@ if ( ! function_exists( 'convert_to_wp_app_playground' ) ) {
 				throw new RuntimeException( "Could not read {$source_dir}/index.html" );
 			}
 
-			$template = convert_to_wp_app_create_template( $index, $slug );
+			$template = convert_to_wp_app_create_template( $index, $slug, $source_public_path );
 		}
 		convert_to_wp_app_mkdir( $plugin_dir . '/templates' );
 		file_put_contents( $plugin_dir . '/templates/index.php', $template );
@@ -178,11 +179,11 @@ if ( ! function_exists( 'convert_to_wp_app_playground' ) ) {
 		return ! preg_match( '#\b(?:src|href)=([\'"])/?src/#i', $html );
 	}
 
-	function convert_to_wp_app_create_template( string $html, string $slug ): string {
+	function convert_to_wp_app_create_template( string $html, string $slug, string $source_public_path = '' ): string {
 		$head = convert_to_wp_app_extract_tag_contents( $html, 'head' );
 		$body = convert_to_wp_app_extract_tag_contents( $html, 'body' );
-		$head = convert_to_wp_app_rewrite_asset_urls( $head );
-		$body = convert_to_wp_app_rewrite_asset_urls( $body );
+		$head = convert_to_wp_app_rewrite_asset_urls( $head, $source_public_path );
+		$body = convert_to_wp_app_rewrite_asset_urls( $body, $source_public_path );
 
 		$head = preg_replace( '/<title\b[^>]*>.*?<\/title>/is', '<title><?php wp_app_title(); ?></title>', $head, 1, $count );
 		if ( $count === 0 ) {
@@ -333,19 +334,19 @@ PHP;
 		return '';
 	}
 
-	function convert_to_wp_app_rewrite_asset_urls( string $html ): string {
+	function convert_to_wp_app_rewrite_asset_urls( string $html, string $source_public_path = '' ): string {
 		return preg_replace_callback(
 			'/<([a-z][a-z0-9:-]*)\b[^>]*>/i',
-			static function( array $matches ): string {
+			static function( array $matches ) use ( $source_public_path ): string {
 				$tag_name = strtolower( $matches[1] );
 				return preg_replace_callback(
 					'/\b(src|href)=([\'"])([^\'"]+)\2/i',
-					static function( array $attr_matches ) use ( $tag_name ): string {
+					static function( array $attr_matches ) use ( $tag_name, $source_public_path ): string {
 						$attribute = strtolower( $attr_matches[1] );
 						if ( ! convert_to_wp_app_is_asset_attribute( $tag_name, $attribute ) ) {
 							return $attr_matches[0];
 						}
-						$path = convert_to_wp_app_local_asset_path( html_entity_decode( $attr_matches[3], ENT_QUOTES ) );
+						$path = convert_to_wp_app_local_asset_path( html_entity_decode( $attr_matches[3], ENT_QUOTES ), $source_public_path );
 						if ( $path === null ) {
 							return $attr_matches[0];
 						}
@@ -358,7 +359,7 @@ PHP;
 		);
 	}
 
-	function convert_to_wp_app_local_asset_path( string $url ): ?string {
+	function convert_to_wp_app_local_asset_path( string $url, string $source_public_path = '' ): ?string {
 		$url = trim( $url );
 		if ( $url === '' || $url[0] === '#' || $url[0] === '?' ) {
 			return null;
@@ -372,6 +373,11 @@ PHP;
 		$url = preg_replace( '/[?#].*$/', '', $url );
 		$url = preg_replace( '#^\./#', '', $url );
 		$url = ltrim( $url, '/' );
+		$source_public_path = trim( $source_public_path, '/' );
+		if ( $source_public_path !== '' && strpos( $url . '/', $source_public_path . '/' ) === 0 ) {
+			$url = substr( $url, strlen( $source_public_path ) );
+			$url = ltrim( $url, '/' );
+		}
 		return $url !== '' && strpos( $url, '..' ) === false ? $url : null;
 	}
 
