@@ -129,6 +129,10 @@
 			color: var(--muted);
 			font-weight: 500;
 		}
+		.examples-error {
+			color: var(--error);
+			font-weight: 650;
+		}
 		button, .button {
 			display: inline-flex;
 			align-items: center;
@@ -232,16 +236,7 @@
 					<input id="pagesUrl" name="pagesUrl" required placeholder="https://owner.github.io/repo/">
 					<p class="hint">The matching GitHub repository is inferred from the Pages URL.</p>
 
-					<ul class="examples">
-						<li>
-							<a class="example" href="?pagesUrl=https%3A%2F%2Fjonathanbossenger.github.io%2Ftimes-table-tester%2F" data-pages-url="https://jonathanbossenger.github.io/times-table-tester/">Times Table Tester</a>
-							<a class="external" href="https://jonathanbossenger.github.io/times-table-tester/" target="_blank" rel="noopener">View app</a>
-						</li>
-						<li>
-							<a class="example" href="?pagesUrl=https%3A%2F%2Fashfame.github.io%2Fsojourn%2F" data-pages-url="https://ashfame.github.io/sojourn/">Sojourn</a>
-							<a class="external" href="https://ashfame.github.io/sojourn/" target="_blank" rel="noopener">View app</a>
-						</li>
-					</ul>
+					<ul id="examples" class="examples"></ul>
 
 					<div id="summary" class="summary hidden">
 						<div><strong>Repository</strong> <span id="repoSummary"></span></div>
@@ -305,6 +300,7 @@
 		const playgroundLink = document.querySelector('#playgroundLink');
 		const copyLink = document.querySelector('#copyLink');
 		const copyBlueprint = document.querySelector('#copyBlueprint');
+		const examples = document.querySelector('#examples');
 
 		let currentPlaygroundUrl = '';
 		let currentBlueprintJson = '';
@@ -720,21 +716,64 @@
 			field.addEventListener('change', update);
 		});
 
-		document.querySelectorAll('.example').forEach((link) => {
-			link.addEventListener('click', (event) => {
-				event.preventDefault();
-				const inferred = parseGitHubPagesUrl(link.dataset.pagesUrl);
-				pagesUrl.value = inferred.pagesUrl;
-				repo.value = inferred.url;
-				slug.value = toSlug(inferred.name);
-				pluginName.value = toTitle(inferred.name);
-				update();
+		function bindExampleLinks() {
+			document.querySelectorAll('.example').forEach((link) => {
+				link.addEventListener('click', (event) => {
+					event.preventDefault();
+					const inferred = parseGitHubPagesUrl(link.dataset.pagesUrl);
+					pagesUrl.value = inferred.pagesUrl;
+					repo.value = inferred.url;
+					slug.value = toSlug(inferred.name);
+					pluginName.value = toTitle(inferred.name);
+					update();
+				});
 			});
-		});
+		}
+
+		function renderExamples(items) {
+			examples.replaceChildren();
+			for (const item of items) {
+				const li = document.createElement('li');
+				const selectLink = document.createElement('a');
+				selectLink.className = 'example';
+				selectLink.href = `?pagesUrl=${encodeURIComponent(item.pagesUrl)}`;
+				selectLink.dataset.pagesUrl = item.pagesUrl;
+				selectLink.textContent = item.name;
+
+				const viewLink = document.createElement('a');
+				viewLink.className = 'external';
+				viewLink.href = item.pagesUrl;
+				viewLink.target = '_blank';
+				viewLink.rel = 'noopener';
+				viewLink.textContent = 'View app';
+
+				li.append(selectLink, viewLink);
+				examples.append(li);
+			}
+			bindExampleLinks();
+		}
+
+		async function loadExamples() {
+			try {
+				const response = await fetch('./examples.json');
+				if (!response.ok) {
+					throw new Error(`${response.status} ${response.statusText}`);
+				}
+				const items = await response.json();
+				renderExamples(items);
+			} catch (err) {
+				examples.replaceChildren();
+				const li = document.createElement('li');
+				li.className = 'examples-error';
+				li.textContent = `Could not load examples.json: ${err.message}`;
+				examples.append(li);
+			}
+		}
 
 		copyLink.addEventListener('click', () => copyText(copyLink, currentPlaygroundUrl));
 		copyBlueprint.addEventListener('click', () => copyText(copyBlueprint, currentBlueprintJson));
 
+		loadExamples();
 		update();
 	</script>
 </body>
