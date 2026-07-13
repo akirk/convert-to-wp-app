@@ -596,7 +596,7 @@
 				}
 			}
 
-			const snapshotFiles = [...files.values()].sort((a, b) => a.path.localeCompare(b.path));
+			const snapshotFiles = (await filterDownloadableFiles([...files.values()])).sort((a, b) => a.path.localeCompare(b.path));
 			if (!snapshotFiles.some((file) => file.path === 'index.html')) {
 				throw new Error('Could not snapshot index.html.');
 			}
@@ -718,6 +718,27 @@
 				seen.add(key);
 				return true;
 			});
+		}
+
+		async function filterDownloadableFiles(files) {
+			const results = await Promise.all(
+				files.map(async (file) => {
+					return await canDownload(file.url) ? file : null;
+				})
+			);
+			return results.filter(Boolean);
+		}
+
+		async function canDownload(url) {
+			let response = await fetch(url, { method: 'HEAD' }).catch(() => null);
+			if (response && response.ok) {
+				return true;
+			}
+			if (response && response.status !== 405) {
+				return false;
+			}
+			response = await fetch(url).catch(() => null);
+			return Boolean(response && response.ok);
 		}
 
 		async function copyText(button, value) {
