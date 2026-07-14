@@ -189,7 +189,7 @@
 			border-radius: 6px;
 			background: #fbfcfe;
 		}
-		.challenge-entry {
+		.source-entry {
 			display: flex;
 			flex-wrap: wrap;
 			align-items: center;
@@ -197,19 +197,19 @@
 			padding: 8px 10px;
 			border-bottom: 1px solid var(--border);
 		}
-		.challenge-entry:last-child {
+		.source-entry:last-child {
 			border-bottom: 0;
 		}
-		.challenge-entry-title {
+		.source-entry-title {
 			min-width: 0;
 			font-weight: 650;
 		}
-		.challenge-entry-action {
+		.source-entry-action {
 			color: var(--accent-dark);
 			font-size: 0.86rem;
 			font-weight: 650;
 		}
-		.challenge-entry-meta {
+		.source-entry-meta {
 			flex-basis: 100%;
 			color: var(--muted);
 			font-size: 0.82rem;
@@ -243,18 +243,6 @@
 			opacity: 0.55;
 			pointer-events: none;
 		}
-		.summary {
-			display: grid;
-			gap: 8px;
-			margin-top: 14px;
-			padding: 12px;
-			border: 1px solid var(--border);
-			border-radius: 6px;
-			background: #fbfcfe;
-			color: var(--muted);
-			font-size: 0.9rem;
-		}
-		.summary strong { color: var(--text); }
 		.analysis {
 			margin-top: 14px;
 			padding: 12px;
@@ -324,10 +312,6 @@
 					<div class="examples-heading">Examples and sources:</div>
 					<ul id="examples" class="examples"></ul>
 
-					<div id="summary" class="summary hidden">
-						<div><strong>Source</strong> <span id="repoSummary"></span></div>
-						<div><strong>Plugin</strong> <span id="pluginSummary"></span></div>
-					</div>
 					<div id="analysis" class="analysis hidden" data-state="idle"></div>
 
 					<details id="advancedOptions">
@@ -384,9 +368,6 @@
 		const pluginName = document.querySelector('#pluginName');
 		const pluginAuthor = document.querySelector('#pluginAuthor');
 		const error = document.querySelector('#error');
-		const summary = document.querySelector('#summary');
-		const repoSummary = document.querySelector('#repoSummary');
-		const pluginSummary = document.querySelector('#pluginSummary');
 		const analysis = document.querySelector('#analysis');
 		const blueprintOutput = document.querySelector('#blueprint');
 		const blueprintSummary = document.querySelector('#blueprintSummary');
@@ -427,7 +408,6 @@
 				currentBlueprintJson = '';
 				currentInput = null;
 				setPlayable(false);
-				summary.classList.add('hidden');
 				analysis.classList.add('hidden');
 				error.textContent = err.message;
 				error.style.display = 'block';
@@ -454,9 +434,6 @@
 			renderBlueprint(currentInput);
 
 			setPlayable(false);
-			summary.classList.remove('hidden');
-			repoSummary.textContent = parsed.url;
-			pluginSummary.textContent = `${selectedPluginName} at /${selectedSlug}/`;
 			analyzePagesInput(inferred, currentInput);
 
 			replaceHistory({
@@ -483,9 +460,6 @@
 			currentInput = getSingleHtmlInput(htmlPage);
 			renderBlueprint(currentInput);
 
-			summary.classList.remove('hidden');
-			repoSummary.textContent = htmlPage.url;
-			pluginSummary.textContent = `${selectedPluginName} at /${selectedSlug}/`;
 			analysis.classList.remove('hidden');
 			analysis.dataset.state = 'ok';
 			analysis.textContent = 'Using this HTML page directly. Playground will download it during setup.';
@@ -651,8 +625,7 @@
 					snapshotFiles,
 				};
 				renderBlueprint(currentInput);
-				analysis.dataset.state = 'ok';
-				analysis.textContent = `Found ${snapshotFiles.length} page file${snapshotFiles.length === 1 ? '' : 's'} to snapshot during Playground setup.`;
+				analysis.classList.add('hidden');
 				setPlayable(true);
 			} catch (err) {
 				if (requestId !== analyzeRequestId) {
@@ -735,7 +708,7 @@
 				const snapshotFiles = await crawlPagesSnapshot(inferred, liveHtml);
 				return {
 					ok: true,
-					message: `Found ${snapshotFiles.length} deployed file${snapshotFiles.length === 1 ? '' : 's'} to snapshot during Playground setup.`,
+					message: '',
 					input: {
 						...input,
 						snapshotFiles,
@@ -1171,7 +1144,8 @@
 
 		function bindExampleLinks() {
 			document.querySelectorAll('.example-use').forEach((button) => {
-				button.addEventListener('click', () => {
+				button.addEventListener('click', (event) => {
+					event.preventDefault();
 					const inferred = parseGitHubPagesUrl(button.dataset.pagesUrl);
 					pagesUrl.value = inferred.pagesUrl;
 					slug.value = '';
@@ -1201,21 +1175,25 @@
 				}
 				const viewUrl = item.pagesUrl || item.url;
 				if (!item.entriesUrl) {
-					const viewLink = document.createElement('a');
-					viewLink.href = viewUrl;
-					viewLink.target = '_blank';
-					viewLink.rel = 'noopener';
-					viewLink.textContent = item.name;
-					li.append(viewLink);
-				}
+					li.className = 'source-entry';
+					const title = document.createElement('span');
+					title.className = 'source-entry-title';
+					title.textContent = item.name;
 
-				if (item.pagesUrl) {
-					const useButton = document.createElement('button');
-					useButton.className = 'example-use';
-					useButton.type = 'button';
-					useButton.dataset.pagesUrl = item.pagesUrl;
-					useButton.textContent = 'Use this';
-					li.append(useButton);
+					const standaloneLink = document.createElement('a');
+					standaloneLink.className = 'source-entry-action';
+					standaloneLink.href = viewUrl;
+					standaloneLink.target = '_blank';
+					standaloneLink.rel = 'noopener';
+					standaloneLink.textContent = 'Try standalone';
+
+					const useLink = document.createElement('a');
+					useLink.className = 'source-entry-action example-use';
+					useLink.href = '#';
+					useLink.dataset.pagesUrl = item.pagesUrl;
+					useLink.textContent = 'Use it';
+
+					li.append(title, standaloneLink, useLink);
 				}
 
 				if (item.description) {
@@ -1308,21 +1286,21 @@
 
 		function renderChallengeEntry(entry) {
 			const row = document.createElement('div');
-			row.className = 'challenge-entry';
+			row.className = 'source-entry';
 
 			const title = document.createElement('span');
-			title.className = 'challenge-entry-title';
+			title.className = 'source-entry-title';
 			title.textContent = entry.title || entry.filename;
 
 			const standaloneLink = document.createElement('a');
-			standaloneLink.className = 'challenge-entry-action';
+			standaloneLink.className = 'source-entry-action';
 			standaloneLink.href = sourceEntryUrl(entry);
 			standaloneLink.target = '_blank';
 			standaloneLink.rel = 'noopener';
-			standaloneLink.textContent = 'Try it standalone';
+			standaloneLink.textContent = 'Try standalone';
 
 			const useLink = document.createElement('a');
-			useLink.className = 'challenge-entry-action';
+			useLink.className = 'source-entry-action';
 			useLink.href = '#';
 			useLink.textContent = 'Use it';
 			useLink.addEventListener('click', (event) => {
@@ -1335,7 +1313,7 @@
 			});
 
 			const meta = document.createElement('div');
-			meta.className = 'challenge-entry-meta';
+			meta.className = 'source-entry-meta';
 			meta.textContent = entry.author ? `by ${entry.author}` : 'One HTML Page Challenge entry';
 
 			row.append(title, standaloneLink, useLink, meta);
