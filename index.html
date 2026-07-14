@@ -202,6 +202,12 @@
 		}
 		.challenge-entry-title {
 			min-width: 0;
+			font-weight: 650;
+		}
+		.challenge-entry-action {
+			color: var(--accent-dark);
+			font-size: 0.86rem;
+			font-weight: 650;
 		}
 		.challenge-entry-meta {
 			flex-basis: 100%;
@@ -1304,17 +1310,23 @@
 			const row = document.createElement('div');
 			row.className = 'challenge-entry';
 
-			const title = document.createElement('a');
+			const title = document.createElement('span');
 			title.className = 'challenge-entry-title';
-			title.href = sourceEntryUrl(entry);
-			title.target = '_blank';
-			title.rel = 'noopener';
 			title.textContent = entry.title || entry.filename;
 
-			const useButton = document.createElement('button');
-			useButton.type = 'button';
-			useButton.textContent = 'Use this';
-			useButton.addEventListener('click', () => {
+			const standaloneLink = document.createElement('a');
+			standaloneLink.className = 'challenge-entry-action';
+			standaloneLink.href = sourceEntryUrl(entry);
+			standaloneLink.target = '_blank';
+			standaloneLink.rel = 'noopener';
+			standaloneLink.textContent = 'Try it standalone';
+
+			const useLink = document.createElement('a');
+			useLink.className = 'challenge-entry-action';
+			useLink.href = '#';
+			useLink.textContent = 'Use it';
+			useLink.addEventListener('click', (event) => {
+				event.preventDefault();
 				useSingleHtmlExample({
 					url: sourceEntryUrl(entry),
 					title: entry.title || entry.filename,
@@ -1326,7 +1338,7 @@
 			meta.className = 'challenge-entry-meta';
 			meta.textContent = entry.author ? `by ${entry.author}` : 'One HTML Page Challenge entry';
 
-			row.append(title, useButton, meta);
+			row.append(title, standaloneLink, useLink, meta);
 			return row;
 		}
 
