@@ -6,5 +6,10 @@
 	{
 		"name": "Sojourn",
 		"pagesUrl": "https://ashfame.github.io/sojourn/"
+	},
+	{
+		"name": "One HTML Page Challenge",
+		"url": "https://onehtmlpagechallenge.com/",
+		"description": "Browse the submissions, open one, then paste that entry's .html URL above."
 	}
 ]

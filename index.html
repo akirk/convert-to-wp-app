@@ -123,16 +123,36 @@
 			font-size: 0.9rem;
 		}
 		.examples li {
+			display: flex;
+			flex-wrap: wrap;
+			align-items: baseline;
+			gap: 8px;
 			padding-left: 2px;
 		}
 		.examples a {
 			color: var(--accent-dark);
 			font-weight: 650;
 		}
+		.examples button {
+			min-height: 0;
+			padding: 0;
+			border: 0;
+			background: transparent;
+			color: var(--accent-dark);
+			font: inherit;
+			font-weight: 650;
+			text-decoration: underline;
+			cursor: pointer;
+		}
 		.examples .external {
 			margin-left: 8px;
 			color: var(--muted);
 			font-weight: 500;
+		}
+		.example-description {
+			flex-basis: 100%;
+			color: var(--muted);
+			font-size: 0.86rem;
 		}
 		.examples-error {
 			color: var(--error);
@@ -224,27 +244,28 @@
 			.step { gap: 10px; }
 			.actions { flex-direction: column; }
 			button, .button { width: 100%; }
+			.examples button { width: auto; }
 		}
 	</style>
 </head>
 <body>
 	<main>
 		<h1>Convert to WpApp</h1>
-		<p class="lede">Create a WordPress Playground link from a GitHub Pages app. The blueprint checks out the app's GitHub repo, checks out the converter, and turns the local files into a wp-app plugin.</p>
+		<p class="lede">Create a WordPress Playground link from a GitHub Pages app or a single HTML page. The blueprint loads the static files, checks out the converter, and turns them into a wp-app plugin.</p>
 
 		<form id="generator" class="panel">
 			<div class="step">
 				<span class="step-number">1</span>
 				<div class="step-body">
 					<h2>Pick an app</h2>
-					<label for="pagesUrl">GitHub Pages URL</label>
-					<input id="pagesUrl" name="pagesUrl" required placeholder="https://owner.github.io/repo/">
+					<label for="pagesUrl">App URL</label>
+					<input id="pagesUrl" name="pagesUrl" required placeholder="https://owner.github.io/repo/ or https://example.com/app.html">
 
-					<div class="examples-heading">Load an example:</div>
+					<div class="examples-heading">Examples and sources:</div>
 					<ul id="examples" class="examples"></ul>
 
 					<div id="summary" class="summary hidden">
-						<div><strong>Repository</strong> <span id="repoSummary"></span></div>
+						<div><strong>Source</strong> <span id="repoSummary"></span></div>
 						<div><strong>Plugin</strong> <span id="pluginSummary"></span></div>
 					</div>
 					<div id="analysis" class="analysis hidden" data-state="idle"></div>
@@ -261,6 +282,10 @@
 							<div>
 								<label for="pluginName">Plugin name</label>
 								<input id="pluginName" name="pluginName" placeholder="Repo Name">
+							</div>
+							<div>
+								<label for="pluginAuthor">Plugin author</label>
+								<input id="pluginAuthor" name="pluginAuthor" placeholder="Author name">
 							</div>
 						</div>
 					</details>
@@ -296,6 +321,7 @@
 		const repo = document.querySelector('#repo');
 		const slug = document.querySelector('#slug');
 		const pluginName = document.querySelector('#pluginName');
+		const pluginAuthor = document.querySelector('#pluginAuthor');
 		const error = document.querySelector('#error');
 		const summary = document.querySelector('#summary');
 		const repoSummary = document.querySelector('#repoSummary');
@@ -318,32 +344,19 @@
 		repo.value = state.get('repo') || '';
 		slug.value = state.get('slug') || '';
 		pluginName.value = state.get('pluginName') || '';
+		pluginAuthor.value = state.get('pluginAuthor') || '';
 
 		function update() {
 			error.style.display = 'none';
 			try {
-				const inferred = parseGitHubPagesUrl(pagesUrl.value);
-				repo.value = inferred.url;
-
-				const parsed = parseGitHubRepo(repo.value);
-				const selectedSlug = slug.value || toSlug(parsed.name);
-				const selectedPluginName = pluginName.value || toTitle(parsed.name);
-				currentInput = getInput(inferred);
-				renderBlueprint(currentInput);
-
-				setPlayable(false);
-				summary.classList.remove('hidden');
-				repoSummary.textContent = parsed.url;
-				pluginSummary.textContent = `${selectedPluginName} at /${selectedSlug}/`;
-				analyzePagesInput(inferred, currentInput);
-
-				const params = new URLSearchParams({
-					pagesUrl: inferred.pagesUrl,
-					slug: selectedSlug,
-					pluginName: selectedPluginName
-				});
-				window.history.replaceState(null, '', `?${params.toString()}`);
+				const inputUrl = normalizeInputUrl(pagesUrl.value);
+				if (isSingleHtmlPageUrl(inputUrl)) {
+					updateSingleHtmlPage(inputUrl);
+				} else {
+					updateGitHubPages(inputUrl);
+				}
 			} catch (err) {
+				analyzeRequestId++;
 				currentPlaygroundUrl = '';
 				currentBlueprintJson = '';
 				currentInput = null;
@@ -353,6 +366,65 @@
 				error.textContent = err.message;
 				error.style.display = 'block';
 			}
+		}
+
+		function updateGitHubPages(inputUrl) {
+			const inferred = parseGitHubPagesUrl(inputUrl);
+			repo.value = inferred.url;
+
+			const parsed = parseGitHubRepo(repo.value);
+			const selectedSlug = slug.value || toSlug(parsed.name);
+			const selectedPluginName = pluginName.value || toTitle(parsed.name);
+			currentInput = getInput(inferred);
+			renderBlueprint(currentInput);
+
+			setPlayable(false);
+			summary.classList.remove('hidden');
+			repoSummary.textContent = parsed.url;
+			pluginSummary.textContent = `${selectedPluginName} at /${selectedSlug}/`;
+			analyzePagesInput(inferred, currentInput);
+
+			replaceHistory({
+				pagesUrl: inferred.pagesUrl,
+				slug: selectedSlug,
+				pluginName: selectedPluginName,
+				pluginAuthor: pluginAuthor.value,
+			});
+		}
+
+		function updateSingleHtmlPage(inputUrl) {
+			analyzeRequestId++;
+			const htmlPage = parseSingleHtmlPageUrl(inputUrl);
+			repo.value = '';
+			const selectedSlug = slug.value || toSlug(htmlPage.name);
+			const selectedPluginName = pluginName.value || toTitle(htmlPage.name);
+			currentInput = getSingleHtmlInput(htmlPage);
+			renderBlueprint(currentInput);
+
+			summary.classList.remove('hidden');
+			repoSummary.textContent = htmlPage.url;
+			pluginSummary.textContent = `${selectedPluginName} at /${selectedSlug}/`;
+			analysis.classList.remove('hidden');
+			analysis.dataset.state = 'ok';
+			analysis.textContent = 'Using this HTML file directly. Playground will download it during setup.';
+			setPlayable(true);
+
+			replaceHistory({
+				pagesUrl: htmlPage.url,
+				slug: selectedSlug,
+				pluginName: selectedPluginName,
+				pluginAuthor: pluginAuthor.value,
+			});
+		}
+
+		function replaceHistory(values) {
+			const params = new URLSearchParams();
+			for (const [key, value] of Object.entries(values)) {
+				if (value) {
+					params.set(key, value);
+				}
+			}
+			window.history.replaceState(null, '', `?${params.toString()}`);
 		}
 
 		function setPlayable(enabled) {
@@ -382,10 +454,66 @@
 				builtPath: '',
 				slug: selectedSlug,
 				pluginName: pluginName.value,
+				pluginAuthor: pluginAuthor.value,
 				converterRef: 'main',
 				converterRefType: 'branch',
 				allowPhpSource: false,
 				sourcePublicPath: inferred.basePath,
+			};
+		}
+
+		function getSingleHtmlInput(htmlPage) {
+			const selectedSlug = slug.value || toSlug(htmlPage.name);
+			return {
+				repo: '',
+				sourceUrl: htmlPage.url,
+				sourceName: htmlPage.name,
+				slug: selectedSlug,
+				pluginName: pluginName.value || toTitle(htmlPage.name),
+				pluginAuthor: pluginAuthor.value,
+				converterRef: 'main',
+				converterRefType: 'branch',
+				allowPhpSource: false,
+				snapshotFiles: [
+					{
+						path: 'index.html',
+						url: htmlPage.url,
+					},
+				],
+			};
+		}
+
+		function normalizeInputUrl(value) {
+			const url = String(value || '').trim();
+			if (!url) {
+				throw new Error('Enter a GitHub Pages URL or a single HTML page URL.');
+			}
+			return url;
+		}
+
+		function isSingleHtmlPageUrl(value) {
+			try {
+				const url = new URL(value);
+				return /^https?:$/.test(url.protocol) && /\.html?$/i.test(url.pathname);
+			} catch {
+				return false;
+			}
+		}
+
+		function parseSingleHtmlPageUrl(value) {
+			let url;
+			try {
+				url = new URL(value);
+			} catch {
+				throw new Error('Use a URL like https://example.com/app.html.');
+			}
+			if (!/^https?:$/.test(url.protocol) || !/\.html?$/i.test(url.pathname)) {
+				throw new Error('Use a single HTML page URL ending in .html or .htm.');
+			}
+			const filename = decodeURIComponent(url.pathname.split('/').filter(Boolean).pop() || 'html-page.html');
+			return {
+				url: url.href,
+				name: filename.replace(/\.html?$/i, ''),
 			};
 		}
 
@@ -718,20 +846,20 @@
 			}
 		});
 
-		[pagesUrl, slug, pluginName].forEach((field) => {
+		[pagesUrl, slug, pluginName, pluginAuthor].forEach((field) => {
 			field.addEventListener('input', update);
 			field.addEventListener('change', update);
 		});
 
 		function bindExampleLinks() {
-			document.querySelectorAll('.example').forEach((link) => {
-				link.addEventListener('click', (event) => {
-					event.preventDefault();
-					const inferred = parseGitHubPagesUrl(link.dataset.pagesUrl);
+			document.querySelectorAll('.example-use').forEach((button) => {
+				button.addEventListener('click', () => {
+					const inferred = parseGitHubPagesUrl(button.dataset.pagesUrl);
 					pagesUrl.value = inferred.pagesUrl;
 					repo.value = inferred.url;
 					slug.value = toSlug(inferred.name);
 					pluginName.value = toTitle(inferred.name);
+					pluginAuthor.value = '';
 					update();
 				});
 			});
@@ -741,20 +869,29 @@
 			examples.replaceChildren();
 			for (const item of items) {
 				const li = document.createElement('li');
-				const selectLink = document.createElement('a');
-				selectLink.className = 'example';
-				selectLink.href = `?pagesUrl=${encodeURIComponent(item.pagesUrl)}`;
-				selectLink.dataset.pagesUrl = item.pagesUrl;
-				selectLink.textContent = item.name;
-
+				const viewUrl = item.pagesUrl || item.url;
 				const viewLink = document.createElement('a');
-				viewLink.className = 'external';
-				viewLink.href = item.pagesUrl;
+				viewLink.href = viewUrl;
 				viewLink.target = '_blank';
 				viewLink.rel = 'noopener';
-				viewLink.textContent = 'View app';
+				viewLink.textContent = item.name;
+				li.append(viewLink);
 
-				li.append(selectLink, viewLink);
+				if (item.pagesUrl) {
+					const useButton = document.createElement('button');
+					useButton.className = 'example-use';
+					useButton.type = 'button';
+					useButton.dataset.pagesUrl = item.pagesUrl;
+					useButton.textContent = 'Use';
+					li.append(useButton);
+				}
+
+				if (item.description) {
+					const description = document.createElement('span');
+					description.className = 'example-description';
+					description.textContent = item.description;
+					li.append(description);
+				}
 				examples.append(li);
 			}
 			bindExampleLinks();
