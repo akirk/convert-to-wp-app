@@ -10,6 +10,7 @@
 	{
 		"name": "One HTML Page Challenge",
 		"url": "https://onehtmlpagechallenge.com/",
-		"description": "Browse the submissions, open one, then paste that entry's .html URL above."
+		"entriesUrl": "https://raw.githubusercontent.com/Metroxe/one-html-page-challenge/master/entries.js",
+		"description": "Browse the submissions here and load an entry directly."
 	}
 ]

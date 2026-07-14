@@ -160,6 +160,45 @@
 			color: var(--muted);
 			font-size: 0.86rem;
 		}
+		.example-source {
+			display: block;
+		}
+		.example-source details {
+			margin-top: 4px;
+			padding-top: 0;
+			border-top: 0;
+		}
+		.example-source summary {
+			display: inline-block;
+			color: var(--accent-dark);
+			font-size: 0.86rem;
+			font-weight: 650;
+		}
+		.challenge-entries {
+			display: grid;
+			gap: 8px;
+			max-height: 340px;
+			margin: 10px 0 0;
+			padding: 10px;
+			overflow: auto;
+			border: 1px solid var(--border);
+			border-radius: 6px;
+			background: #fbfcfe;
+		}
+		.challenge-entry {
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) auto;
+			gap: 4px 8px;
+			align-items: center;
+		}
+		.challenge-entry-title {
+			min-width: 0;
+		}
+		.challenge-entry-meta {
+			grid-column: 1 / -1;
+			color: var(--muted);
+			font-size: 0.82rem;
+		}
 		.examples-error {
 			color: var(--error);
 			font-weight: 650;
@@ -345,7 +384,7 @@
 		let currentBlueprintJson = '';
 		let currentInput = null;
 		let analyzeRequestId = 0;
-		let lastInputUrl = '';
+		let lastPagesUrlValue = '';
 
 		const state = new URLSearchParams(window.location.search);
 		pagesUrl.value = state.get('pagesUrl') || state.get('pages') || 'https://jonathanbossenger.github.io/times-table-tester/';
@@ -358,11 +397,6 @@
 			error.style.display = 'none';
 			try {
 				const inputUrl = normalizeInputUrl(pagesUrl.value);
-				if (lastInputUrl && inputUrl !== lastInputUrl) {
-					slug.value = '';
-					pluginName.value = '';
-				}
-				lastInputUrl = inputUrl;
 				if (isGitHubPagesAppUrl(inputUrl)) {
 					updateGitHubPages(inputUrl);
 				} else if (isSingleHtmlPageUrl(inputUrl)) {
@@ -390,6 +424,15 @@
 			const parsed = parseGitHubRepo(repo.value);
 			const selectedSlug = slug.value || toSlug(parsed.name);
 			const selectedPluginName = pluginName.value || toTitle(parsed.name);
+			if (!slug.value) {
+				slug.value = selectedSlug;
+			}
+			if (!pluginName.value) {
+				pluginName.value = selectedPluginName;
+			}
+			if (!pluginAuthor.value) {
+				pluginAuthor.value = parsed.owner;
+			}
 			currentInput = getInput(inferred);
 			renderBlueprint(currentInput);
 
@@ -894,7 +937,20 @@
 			}
 		});
 
-		[pagesUrl, slug, pluginName, pluginAuthor].forEach((field) => {
+		function updateFromPagesUrlChange() {
+			if (pagesUrl.value !== lastPagesUrlValue) {
+				slug.value = '';
+				pluginName.value = '';
+				pluginAuthor.value = '';
+				lastPagesUrlValue = pagesUrl.value;
+			}
+			update();
+		}
+
+		pagesUrl.addEventListener('input', updateFromPagesUrlChange);
+		pagesUrl.addEventListener('change', updateFromPagesUrlChange);
+
+		[slug, pluginName, pluginAuthor].forEach((field) => {
 			field.addEventListener('input', update);
 			field.addEventListener('change', update);
 		});
@@ -904,9 +960,20 @@
 				button.addEventListener('click', () => {
 					const inferred = parseGitHubPagesUrl(button.dataset.pagesUrl);
 					pagesUrl.value = inferred.pagesUrl;
-					repo.value = inferred.url;
+					slug.value = '';
+					pluginName.value = '';
 					pluginAuthor.value = '';
+					lastPagesUrlValue = pagesUrl.value;
+					repo.value = inferred.url;
 					update();
+				});
+			});
+			document.querySelectorAll('.challenge-source').forEach((details) => {
+				details.addEventListener('toggle', () => {
+					if (details.open && !details.dataset.loaded) {
+						details.dataset.loaded = 'true';
+						loadChallengeEntries(details);
+					}
 				});
 			});
 		}
@@ -915,6 +982,9 @@
 			examples.replaceChildren();
 			for (const item of items) {
 				const li = document.createElement('li');
+				if (item.entriesUrl) {
+					li.className = 'example-source';
+				}
 				const viewUrl = item.pagesUrl || item.url;
 				const viewLink = document.createElement('a');
 				viewLink.href = viewUrl;
@@ -938,9 +1008,90 @@
 					description.textContent = item.description;
 					li.append(description);
 				}
+				if (item.entriesUrl) {
+					const details = document.createElement('details');
+					details.className = 'challenge-source';
+					details.dataset.entriesUrl = item.entriesUrl;
+					const summary = document.createElement('summary');
+					summary.textContent = 'Show entries';
+					const container = document.createElement('div');
+					container.className = 'challenge-entries';
+					container.textContent = 'Loading entries...';
+					details.append(summary, container);
+					li.append(details);
+				}
 				examples.append(li);
 			}
 			bindExampleLinks();
+		}
+
+		async function loadChallengeEntries(details) {
+			const container = details.querySelector('.challenge-entries');
+			try {
+				const text = await fetchText(details.dataset.entriesUrl);
+				const entries = parseChallengeEntries(text);
+				container.replaceChildren();
+				for (const entry of entries) {
+					container.append(renderChallengeEntry(entry));
+				}
+				if (!entries.length) {
+					container.textContent = 'No entries found.';
+				}
+			} catch (err) {
+				container.textContent = `Could not load entries: ${err.message}`;
+			}
+		}
+
+		function parseChallengeEntries(text) {
+			const start = text.indexOf('[');
+			const end = text.lastIndexOf('];');
+			if (start === -1 || end === -1 || end <= start) {
+				throw new Error('entries array not found');
+			}
+			return JSON.parse(text.slice(start, end + 1));
+		}
+
+		function renderChallengeEntry(entry) {
+			const row = document.createElement('div');
+			row.className = 'challenge-entry';
+
+			const title = document.createElement('a');
+			title.className = 'challenge-entry-title';
+			title.href = challengeEntryUrl(entry.filename);
+			title.target = '_blank';
+			title.rel = 'noopener';
+			title.textContent = entry.title || entry.filename;
+
+			const useButton = document.createElement('button');
+			useButton.type = 'button';
+			useButton.textContent = 'Use this';
+			useButton.addEventListener('click', () => {
+				useSingleHtmlExample({
+					url: challengeEntryUrl(entry.filename),
+					title: entry.title || entry.filename,
+					author: entry.author || entry.github || '',
+				});
+			});
+
+			const meta = document.createElement('div');
+			meta.className = 'challenge-entry-meta';
+			meta.textContent = entry.author ? `by ${entry.author}` : 'One HTML Page Challenge entry';
+
+			row.append(title, useButton, meta);
+			return row;
+		}
+
+		function challengeEntryUrl(filename) {
+			return `https://onehtmlpagechallenge.com/entries/${encodeURIComponent(filename)}`;
+		}
+
+		function useSingleHtmlExample(entry) {
+			pagesUrl.value = entry.url;
+			slug.value = parseSingleHtmlPageUrl(entry.url).slug;
+			pluginName.value = entry.title;
+			pluginAuthor.value = entry.author;
+			lastPagesUrlValue = pagesUrl.value;
+			update();
 		}
 
 		async function loadExamples() {
@@ -964,6 +1115,7 @@
 		copyBlueprint.addEventListener('click', () => copyText(copyBlueprint, currentBlueprintJson));
 
 		loadExamples();
+		lastPagesUrlValue = pagesUrl.value;
 		update();
 	</script>
 </body>
