@@ -5,7 +5,7 @@ Convert an existing one-page app into a WordPress plugin powered by [WpApp](http
 ## GitHub Pages Blueprint Generator
 
 This repository can be published as a static GitHub Pages site. Open the page,
-enter a GitHub repository, and it will generate a `playground.wordpress.net`
+enter a GitHub Pages URL, and it will generate a `playground.wordpress.net`
 link.
 
 For the generated blueprints to check out the converter from the same public
