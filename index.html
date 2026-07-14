@@ -164,38 +164,48 @@
 			display: block;
 		}
 		.example-source details {
-			margin-top: 4px;
+			margin-top: 0;
 			padding-top: 0;
 			border-top: 0;
 		}
 		.example-source summary {
-			display: inline-block;
+			display: inline-flex;
+			align-items: center;
 			color: var(--accent-dark);
-			font-size: 0.86rem;
+			cursor: pointer;
 			font-weight: 650;
+		}
+		.example-source .external {
+			margin-left: 8px;
+			font-size: 0.86rem;
 		}
 		.challenge-entries {
 			display: grid;
-			gap: 8px;
+			gap: 0;
 			max-height: 340px;
 			margin: 10px 0 0;
-			padding: 10px;
+			padding: 4px 0;
 			overflow: auto;
 			border: 1px solid var(--border);
 			border-radius: 6px;
 			background: #fbfcfe;
 		}
 		.challenge-entry {
-			display: grid;
-			grid-template-columns: minmax(0, 1fr) auto;
-			gap: 4px 8px;
+			display: flex;
+			flex-wrap: wrap;
 			align-items: center;
+			gap: 4px 8px;
+			padding: 8px 10px;
+			border-bottom: 1px solid var(--border);
+		}
+		.challenge-entry:last-child {
+			border-bottom: 0;
 		}
 		.challenge-entry-title {
 			min-width: 0;
 		}
 		.challenge-entry-meta {
-			grid-column: 1 / -1;
+			flex-basis: 100%;
 			color: var(--muted);
 			font-size: 0.82rem;
 		}
@@ -986,12 +996,14 @@
 					li.className = 'example-source';
 				}
 				const viewUrl = item.pagesUrl || item.url;
-				const viewLink = document.createElement('a');
-				viewLink.href = viewUrl;
-				viewLink.target = '_blank';
-				viewLink.rel = 'noopener';
-				viewLink.textContent = item.name;
-				li.append(viewLink);
+				if (!item.entriesUrl) {
+					const viewLink = document.createElement('a');
+					viewLink.href = viewUrl;
+					viewLink.target = '_blank';
+					viewLink.rel = 'noopener';
+					viewLink.textContent = item.name;
+					li.append(viewLink);
+				}
 
 				if (item.pagesUrl) {
 					const useButton = document.createElement('button');
@@ -1013,12 +1025,18 @@
 					details.className = 'challenge-source';
 					details.dataset.entriesUrl = item.entriesUrl;
 					const summary = document.createElement('summary');
-					summary.textContent = 'Show entries';
+					summary.textContent = item.name;
+					const sourceLink = document.createElement('a');
+					sourceLink.className = 'external';
+					sourceLink.href = viewUrl;
+					sourceLink.target = '_blank';
+					sourceLink.rel = 'noopener';
+					sourceLink.textContent = 'Open site';
 					const container = document.createElement('div');
 					container.className = 'challenge-entries';
 					container.textContent = 'Loading entries...';
 					details.append(summary, container);
-					li.append(details);
+					li.append(details, sourceLink);
 				}
 				examples.append(li);
 			}
