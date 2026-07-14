@@ -461,9 +461,9 @@
 			renderBlueprint(currentInput);
 
 			analysis.classList.remove('hidden');
-			analysis.dataset.state = 'ok';
-			analysis.textContent = 'Using this HTML page directly. Playground will download it during setup.';
-			setPlayable(true);
+			analysis.dataset.state = 'idle';
+			analysis.textContent = 'Checking page assets...';
+			setPlayable(false);
 			analyzeSingleHtmlPage(htmlPage, currentInput);
 
 			replaceHistory({
@@ -651,8 +651,13 @@
 					currentInput = result.input;
 					renderBlueprint(currentInput);
 				}
-				analysis.dataset.state = result.ok ? 'ok' : 'error';
-				analysis.textContent = result.message;
+				if (result.message) {
+					analysis.classList.remove('hidden');
+					analysis.dataset.state = result.ok ? 'ok' : 'error';
+					analysis.textContent = result.message;
+				} else {
+					analysis.classList.add('hidden');
+				}
 				setPlayable(result.ok);
 			} catch (err) {
 				if (requestId !== analyzeRequestId) {
