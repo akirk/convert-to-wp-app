@@ -310,14 +310,14 @@
 		<h1>Convert to WpApp</h1>
 		<p class="lede">Create a WordPress Playground link from a GitHub Pages app or a single HTML page. The blueprint loads the static files, checks out the converter, and turns them into a wp-app plugin.</p>
 
-		<form id="generator" class="panel">
+		<form id="generator" class="panel" autocomplete="off">
 			<div class="primary-steps">
 				<div class="step">
 					<span class="step-number">1</span>
 					<div class="step-body">
 						<h2>Pick an app</h2>
 						<label for="pagesUrl">App URL</label>
-						<input id="pagesUrl" name="pagesUrl" required placeholder="https://owner.github.io/repo/ or https://example.com/app.html">
+						<input id="pagesUrl" name="pagesUrl" required autocomplete="off" placeholder="https://owner.github.io/repo/ or https://example.com/app.html">
 					</div>
 				</div>
 
@@ -392,18 +392,13 @@
 		let analyzeRequestId = 0;
 		let lastPagesUrlValue = '';
 
-		const legacyDefaultPagesUrl = 'https://jonathanbossenger.github.io/times-table-tester/';
 		const state = new URLSearchParams(window.location.search);
 		const initialPagesUrl = state.get('pagesUrl') || state.get('pages') || '';
-		const isLegacyDefaultLoad = initialPagesUrl === legacyDefaultPagesUrl;
-		if (isLegacyDefaultLoad) {
-			window.history.replaceState(null, '', window.location.pathname);
-		}
-		pagesUrl.value = isLegacyDefaultLoad ? '' : initialPagesUrl;
-		repo.value = isLegacyDefaultLoad ? '' : state.get('repo') || '';
-		slug.value = isLegacyDefaultLoad ? '' : state.get('slug') || '';
-		pluginName.value = isLegacyDefaultLoad ? '' : state.get('pluginName') || '';
-		pluginAuthor.value = isLegacyDefaultLoad ? '' : state.get('pluginAuthor') || '';
+		pagesUrl.value = initialPagesUrl;
+		repo.value = state.get('repo') || '';
+		slug.value = state.get('slug') || '';
+		pluginName.value = state.get('pluginName') || '';
+		pluginAuthor.value = state.get('pluginAuthor') || '';
 
 		function update() {
 			error.style.display = 'none';
@@ -502,6 +497,23 @@
 			playgroundLink.setAttribute('aria-disabled', enabled ? 'false' : 'true');
 			copyLink.disabled = !enabled;
 			copyBlueprint.disabled = !enabled;
+		}
+
+		function resetGenerator() {
+			analyzeRequestId++;
+			pagesUrl.value = '';
+			repo.value = '';
+			slug.value = '';
+			pluginName.value = '';
+			pluginAuthor.value = '';
+			currentPlaygroundUrl = '';
+			currentBlueprintJson = '';
+			currentInput = null;
+			lastPagesUrlValue = '';
+			blueprintOutput.value = '';
+			blueprintSummary.textContent = 'View generated blueprint';
+			error.style.display = 'none';
+			setPlayable(false);
 		}
 
 		function renderBlueprint(input) {
@@ -1372,11 +1384,18 @@
 
 		copyLink.addEventListener('click', () => copyText(copyLink, currentPlaygroundUrl));
 		copyBlueprint.addEventListener('click', () => copyText(copyBlueprint, currentBlueprintJson));
+		window.addEventListener('pageshow', () => {
+			if (!window.location.search) {
+				resetGenerator();
+			}
+		});
 
 		loadExamples();
 		lastPagesUrlValue = pagesUrl.value;
 		if (pagesUrl.value) {
 			update();
+		} else {
+			resetGenerator();
 		}
 	</script>
 </body>
