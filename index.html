@@ -389,6 +389,25 @@
 						<label for="pagesUrl">App URL</label>
 						<input id="pagesUrl" name="pagesUrl" required autocomplete="off" placeholder="https://owner.github.io/repo/ or https://example.com/app.html">
 						<p class="hint">When the app is ready, it appears in the Playground list below.</p>
+						<details id="advancedOptions" class="advanced-options">
+							<summary>Advanced options</summary>
+							<input id="repo" name="repo" type="hidden">
+
+							<div class="row">
+								<div>
+									<label for="slug">Plugin slug</label>
+									<input id="slug" name="slug" placeholder="app-name">
+								</div>
+								<div>
+									<label for="pluginName">Plugin name</label>
+									<input id="pluginName" name="pluginName" placeholder="App Name">
+								</div>
+								<div>
+									<label for="pluginAuthor">Plugin author</label>
+									<input id="pluginAuthor" name="pluginAuthor" placeholder="Author name">
+								</div>
+							</div>
+						</details>
 					</div>
 				</div>
 
@@ -401,6 +420,11 @@
 							<button id="copyBlueprint" type="button" disabled>Copy Blueprint JSON</button>
 						</div>
 						<p class="hint">You can paste the blueprint into My Apps on my.wordpress.net to install it there.</p>
+						<details class="blueprint-details">
+							<summary id="blueprintSummary">View generated blueprint</summary>
+							<label for="blueprint">Blueprint JSON</label>
+							<textarea id="blueprint" readonly></textarea>
+						</details>
 						<div id="error" class="error"></div>
 					</div>
 				</div>
@@ -422,34 +446,6 @@
 						<p id="stagedAppsEmpty" class="hint">No apps added yet.</p>
 					</div>
 				</div>
-			</div>
-
-			<div class="secondary-options">
-				<details id="advancedOptions" class="advanced-options">
-					<summary>Advanced options</summary>
-					<input id="repo" name="repo" type="hidden">
-
-					<div class="row">
-						<div>
-							<label for="slug">Plugin slug</label>
-							<input id="slug" name="slug" placeholder="app-name">
-						</div>
-						<div>
-							<label for="pluginName">Plugin name</label>
-							<input id="pluginName" name="pluginName" placeholder="App Name">
-						</div>
-						<div>
-							<label for="pluginAuthor">Plugin author</label>
-							<input id="pluginAuthor" name="pluginAuthor" placeholder="Author name">
-						</div>
-					</div>
-				</details>
-
-				<details class="blueprint-details">
-					<summary id="blueprintSummary">View generated blueprint</summary>
-					<label for="blueprint">Blueprint JSON</label>
-					<textarea id="blueprint" readonly></textarea>
-				</details>
 			</div>
 
 			<div class="examples-heading">Examples and sources:</div>
