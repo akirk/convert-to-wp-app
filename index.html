@@ -175,9 +175,8 @@
 			cursor: pointer;
 			font-weight: 650;
 		}
-		.example-source .external {
-			margin-left: 8px;
-			font-size: 0.86rem;
+		.example-source summary a {
+			color: var(--accent-dark);
 		}
 		.challenge-entries {
 			display: grid;
@@ -1225,18 +1224,20 @@
 					details.dataset.entriesUrl = item.entriesUrl;
 					details.dataset.entriesType = item.entriesType || 'one-html-page-challenge';
 					const summary = document.createElement('summary');
-					summary.textContent = item.name;
 					const sourceLink = document.createElement('a');
-					sourceLink.className = 'external';
 					sourceLink.href = viewUrl;
 					sourceLink.target = '_blank';
 					sourceLink.rel = 'noopener';
-					sourceLink.textContent = 'Open site';
+					sourceLink.textContent = item.name;
+					sourceLink.addEventListener('click', (event) => {
+						event.stopPropagation();
+					});
+					summary.append(sourceLink);
 					const container = document.createElement('div');
 					container.className = 'challenge-entries';
 					container.textContent = 'Loading entries...';
 					details.append(summary, container);
-					li.append(details, sourceLink);
+					li.append(details);
 				}
 				examples.append(li);
 			}
