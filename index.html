@@ -237,6 +237,14 @@
 			border-top: 1px solid var(--border);
 			padding-top: 16px;
 		}
+		.staged-apps-step {
+			display: flex;
+			gap: 14px;
+		}
+		.staged-apps-body {
+			flex: 1;
+			min-width: 0;
+		}
 		.staged-apps-header {
 			display: flex;
 			align-items: center;
@@ -246,6 +254,12 @@
 		}
 		.staged-apps-header h2 {
 			margin: 0;
+		}
+		.staged-apps-actions {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 8px;
+			justify-content: flex-end;
 		}
 		.staged-apps-list {
 			display: grid;
@@ -346,7 +360,15 @@
 			.secondary-options { grid-template-columns: 1fr; }
 			.row { grid-template-columns: 1fr; }
 			.step { gap: 10px; }
+			.staged-apps-step { gap: 10px; }
 			.actions { flex-direction: column; }
+			.staged-apps-header {
+				align-items: stretch;
+				flex-direction: column;
+			}
+			.staged-apps-actions {
+				justify-content: stretch;
+			}
 			.primary-steps .actions { flex-wrap: wrap; }
 			button, .button { width: 100%; }
 			.examples button { width: auto; }
@@ -366,61 +388,66 @@
 						<h2>Pick an app</h2>
 						<label for="pagesUrl">App URL</label>
 						<input id="pagesUrl" name="pagesUrl" required autocomplete="off" placeholder="https://owner.github.io/repo/ or https://example.com/app.html">
-						<p class="hint">Add the current app to the Playground list, then pick another app.</p>
+						<p class="hint">When the app is ready, it appears in the Playground list below.</p>
 					</div>
 				</div>
 
 				<div class="step">
 					<span class="step-number">2</span>
 					<div class="step-body">
-						<h2>Open it in WordPress Playground</h2>
-						<div class="actions">
-							<button id="addApp" type="button" disabled>Add to Playground</button>
-							<a id="playgroundLink" class="button primary" href="#" target="_blank" rel="noopener" aria-disabled="true">Open in Playground</a>
-							<button id="copyLink" type="button" disabled>Copy Playground Link</button>
-							<button id="copyBlueprint" type="button" disabled>Copy Blueprint JSON</button>
-						</div>
+						<h2>Review current app</h2>
+						<p class="hint">Adjust the advanced fields before the app finishes loading if you need a custom slug, name, or author.</p>
 						<div id="error" class="error"></div>
 					</div>
-					</div>
 				</div>
+			</div>
 
-				<div class="staged-apps">
-					<div class="staged-apps-header">
-						<h2 id="stagedAppsHeading">Playground apps (0)</h2>
-						<button id="clearApps" type="button" disabled>Clear apps</button>
-					</div>
-					<ul id="stagedApps" class="staged-apps-list"></ul>
-					<p id="stagedAppsEmpty" class="hint">No apps added yet.</p>
-				</div>
-
-				<div class="secondary-options">
-					<details id="advancedOptions" class="advanced-options">
-						<summary>Advanced options</summary>
-						<input id="repo" name="repo" type="hidden">
-
-						<div class="row">
-							<div>
-								<label for="slug">Plugin slug</label>
-								<input id="slug" name="slug" placeholder="app-name">
-							</div>
-							<div>
-								<label for="pluginName">Plugin name</label>
-								<input id="pluginName" name="pluginName" placeholder="App Name">
-							</div>
-							<div>
-								<label for="pluginAuthor">Plugin author</label>
-								<input id="pluginAuthor" name="pluginAuthor" placeholder="Author name">
+			<div class="staged-apps">
+				<div class="staged-apps-step">
+					<span class="step-number">3</span>
+					<div class="staged-apps-body">
+						<div class="staged-apps-header">
+							<h2 id="stagedAppsHeading">Playground apps (0)</h2>
+							<div class="staged-apps-actions">
+								<a id="playgroundLink" class="button primary" href="#" target="_blank" rel="noopener" aria-disabled="true">Open in Playground</a>
+								<button id="clearApps" type="button" disabled>Clear apps</button>
+								<button id="copyLink" type="button" disabled>Copy Playground Link</button>
+								<button id="copyBlueprint" type="button" disabled>Copy Blueprint JSON</button>
 							</div>
 						</div>
-					</details>
-
-					<details class="blueprint-details">
-						<summary id="blueprintSummary">View generated blueprint</summary>
-							<label for="blueprint">Blueprint JSON</label>
-							<textarea id="blueprint" readonly></textarea>
-						</details>
+						<ul id="stagedApps" class="staged-apps-list"></ul>
+						<p id="stagedAppsEmpty" class="hint">No apps added yet.</p>
 					</div>
+				</div>
+			</div>
+
+			<div class="secondary-options">
+				<details id="advancedOptions" class="advanced-options">
+					<summary>Advanced options</summary>
+					<input id="repo" name="repo" type="hidden">
+
+					<div class="row">
+						<div>
+							<label for="slug">Plugin slug</label>
+							<input id="slug" name="slug" placeholder="app-name">
+						</div>
+						<div>
+							<label for="pluginName">Plugin name</label>
+							<input id="pluginName" name="pluginName" placeholder="App Name">
+						</div>
+						<div>
+							<label for="pluginAuthor">Plugin author</label>
+							<input id="pluginAuthor" name="pluginAuthor" placeholder="Author name">
+						</div>
+					</div>
+				</details>
+
+				<details class="blueprint-details">
+					<summary id="blueprintSummary">View generated blueprint</summary>
+					<label for="blueprint">Blueprint JSON</label>
+					<textarea id="blueprint" readonly></textarea>
+				</details>
+			</div>
 
 			<div class="examples-heading">Examples and sources:</div>
 			<ul id="examples" class="examples"></ul>
@@ -440,7 +467,6 @@
 		const error = document.querySelector('#error');
 		const blueprintOutput = document.querySelector('#blueprint');
 		const blueprintSummary = document.querySelector('#blueprintSummary');
-		const addApp = document.querySelector('#addApp');
 		const playgroundLink = document.querySelector('#playgroundLink');
 		const copyLink = document.querySelector('#copyLink');
 		const copyBlueprint = document.querySelector('#copyBlueprint');
@@ -562,7 +588,9 @@
 
 		function setPlayable(enabled) {
 			currentInputPlayable = enabled;
-			addApp.disabled = !enabled || !currentInput;
+			if (enabled && currentInput) {
+				upsertCurrentAppInPlayground();
+			}
 			renderPlaygroundState();
 		}
 
@@ -1480,38 +1508,35 @@
 			update();
 		}
 
-		function addCurrentAppToPlayground() {
+		function upsertCurrentAppInPlayground() {
 			if (!currentInputPlayable || !currentInput) {
 				return;
 			}
+			const key = appKey(currentInput);
+			const existingIndex = stagedApps.findIndex((app) => appKey(app) === key);
+			const existingSlug = existingIndex === -1 ? '' : stagedApps[existingIndex].slug;
+			const otherApps = existingIndex === -1
+				? stagedApps
+				: stagedApps.filter((_, index) => index !== existingIndex);
 			const app = {
 				...currentInput,
-				slug: nextAvailableSlug(currentInput.slug),
+				slug: existingSlug || nextAvailableSlug(currentInput.slug, otherApps),
 			};
-			stagedApps.push(app);
-			clearCurrentApp();
+			if (existingIndex === -1) {
+				stagedApps.push(app);
+			} else {
+				stagedApps[existingIndex] = app;
+			}
 			renderStagedApps();
-			renderPlaygroundState();
-			replaceHistory({});
 		}
 
-		function clearCurrentApp() {
-			analyzeRequestId++;
-			pagesUrl.value = '';
-			repo.value = '';
-			slug.value = '';
-			pluginName.value = '';
-			pluginAuthor.value = '';
-			currentInput = null;
-			currentInputPlayable = false;
-			addApp.disabled = true;
-			lastPagesUrlValue = '';
-			error.style.display = 'none';
+		function appKey(app) {
+			return app.sourceUrl || app.repo || app.sourceName || app.slug;
 		}
 
-		function nextAvailableSlug(value) {
+		function nextAvailableSlug(value, apps = stagedApps) {
 			const base = toSlug(value);
-			const used = new Set(stagedApps.map((app) => app.slug));
+			const used = new Set(apps.map((app) => app.slug));
 			if (!used.has(base)) {
 				return base;
 			}
@@ -1576,7 +1601,6 @@
 			}
 		}
 
-		addApp.addEventListener('click', addCurrentAppToPlayground);
 		clearApps.addEventListener('click', clearStagedApps);
 		copyLink.addEventListener('click', () => copyText(copyLink, currentPlaygroundUrl));
 		copyBlueprint.addEventListener('click', () => copyText(copyBlueprint, currentBlueprintJson));

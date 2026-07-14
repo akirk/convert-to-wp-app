@@ -6,8 +6,8 @@ Convert an existing one-page app into a WordPress plugin powered by [WpApp](http
 
 This repository can be published as a static GitHub Pages site. Open the page,
 enter a GitHub Pages URL or a single HTML page URL, and it will generate a `playground.wordpress.net`
-link. You can also add the current app to the Playground list, pick another
-app, and open a single Playground link that installs all apps in the list.
+link. Each ready app appears in the Playground list, so you can pick another
+app and open a single Playground link that installs all apps in the list.
 
 For the generated blueprints to check out the converter from the same public
 location as the Pages site, publish this code to
