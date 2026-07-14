@@ -397,6 +397,10 @@
 					<div class="step-body">
 						<h2>Review current app</h2>
 						<p class="hint">Adjust the advanced fields before the app finishes loading if you need a custom slug, name, or author.</p>
+						<div class="actions">
+							<button id="copyBlueprint" type="button" disabled>Copy Blueprint JSON</button>
+						</div>
+						<p class="hint">You can paste the blueprint into My Apps on my.wordpress.net to install it there.</p>
 						<div id="error" class="error"></div>
 					</div>
 				</div>
@@ -412,7 +416,6 @@
 								<a id="playgroundLink" class="button primary" href="#" target="_blank" rel="noopener" aria-disabled="true">Open in Playground</a>
 								<button id="clearApps" type="button" disabled>Clear apps</button>
 								<button id="copyLink" type="button" disabled>Copy Playground Link</button>
-								<button id="copyBlueprint" type="button" disabled>Copy Blueprint JSON</button>
 							</div>
 						</div>
 						<ul id="stagedApps" class="staged-apps-list"></ul>
