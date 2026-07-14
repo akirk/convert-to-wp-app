@@ -56,7 +56,7 @@
 		}
 		.primary-steps {
 			display: grid;
-			grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);
+			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 			gap: 24px;
 			align-items: start;
 		}
@@ -112,8 +112,18 @@
 		.actions {
 			display: flex;
 			flex-wrap: wrap;
-			gap: 10px;
+			gap: 8px;
 			margin-top: 16px;
+		}
+		.primary-steps .actions {
+			flex-wrap: nowrap;
+		}
+		.primary-steps .actions button,
+		.primary-steps .actions .button {
+			min-height: 40px;
+			padding: 8px 10px;
+			font-size: 0.9rem;
+			white-space: nowrap;
 		}
 		.examples {
 			display: grid;
@@ -283,22 +293,30 @@
 		.advanced-options {
 			margin-top: 24px;
 		}
+		.secondary-options {
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+			gap: 24px;
+		}
+		.secondary-options details {
+			margin-top: 24px;
+		}
 		summary {
 			cursor: pointer;
 			font-weight: 700;
 		}
 		.blueprint-details {
-			margin-top: 16px;
-			border-top: 0;
-			padding-top: 0;
+			min-width: 0;
 		}
 		.hidden { display: none; }
 		@media (max-width: 680px) {
 			main { padding: 28px 0; }
 			.primary-steps { grid-template-columns: 1fr; }
+			.secondary-options { grid-template-columns: 1fr; }
 			.row { grid-template-columns: 1fr; }
 			.step { gap: 10px; }
 			.actions { flex-direction: column; }
+			.primary-steps .actions { flex-wrap: wrap; }
 			button, .button { width: 100%; }
 			.examples button { width: auto; }
 		}
@@ -332,35 +350,37 @@
 							<button id="copyBlueprint" type="button" disabled>Copy Blueprint JSON</button>
 						</div>
 						<div id="error" class="error"></div>
-
-						<details class="blueprint-details">
-							<summary id="blueprintSummary">View generated blueprint</summary>
-							<label for="blueprint">Blueprint JSON</label>
-							<textarea id="blueprint" readonly></textarea>
-						</details>
 					</div>
 				</div>
 			</div>
 
-			<details id="advancedOptions" class="advanced-options">
-				<summary>Advanced options</summary>
-				<input id="repo" name="repo" type="hidden">
+			<div class="secondary-options">
+				<details id="advancedOptions" class="advanced-options">
+					<summary>Advanced options</summary>
+					<input id="repo" name="repo" type="hidden">
 
-				<div class="row">
-					<div>
-						<label for="slug">Plugin slug</label>
-						<input id="slug" name="slug" placeholder="app-name">
+					<div class="row">
+						<div>
+							<label for="slug">Plugin slug</label>
+							<input id="slug" name="slug" placeholder="app-name">
+						</div>
+						<div>
+							<label for="pluginName">Plugin name</label>
+							<input id="pluginName" name="pluginName" placeholder="App Name">
+						</div>
+						<div>
+							<label for="pluginAuthor">Plugin author</label>
+							<input id="pluginAuthor" name="pluginAuthor" placeholder="Author name">
+						</div>
 					</div>
-					<div>
-						<label for="pluginName">Plugin name</label>
-						<input id="pluginName" name="pluginName" placeholder="App Name">
-					</div>
-					<div>
-						<label for="pluginAuthor">Plugin author</label>
-						<input id="pluginAuthor" name="pluginAuthor" placeholder="Author name">
-					</div>
-				</div>
-			</details>
+				</details>
+
+				<details class="blueprint-details">
+					<summary id="blueprintSummary">View generated blueprint</summary>
+					<label for="blueprint">Blueprint JSON</label>
+					<textarea id="blueprint" readonly></textarea>
+				</details>
+			</div>
 
 			<div class="examples-heading">Examples and sources:</div>
 			<ul id="examples" class="examples"></ul>
