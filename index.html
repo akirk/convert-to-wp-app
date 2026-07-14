@@ -1366,7 +1366,7 @@
 					useLink.className = 'source-entry-action example-use';
 					useLink.href = '#';
 					useLink.dataset.pagesUrl = item.pagesUrl;
-					useLink.textContent = 'Use it';
+					useLink.textContent = 'Add it';
 
 					li.append(title, standaloneLink, useLink);
 				}
@@ -1477,7 +1477,7 @@
 			const useLink = document.createElement('a');
 			useLink.className = 'source-entry-action';
 			useLink.href = '#';
-			useLink.textContent = 'Use it';
+			useLink.textContent = 'Add it';
 			useLink.addEventListener('click', (event) => {
 				event.preventDefault();
 				useSingleHtmlExample({
