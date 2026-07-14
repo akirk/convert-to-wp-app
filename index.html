@@ -417,6 +417,7 @@
 						<h2>Review current app</h2>
 						<p class="hint">Adjust the advanced fields before the app finishes loading if you need a custom slug, name, or author.</p>
 						<div class="actions">
+							<button id="addCurrentApp" class="hidden" type="button" disabled>Add app</button>
 							<button id="copyBlueprint" type="button" disabled>Copy Blueprint JSON</button>
 						</div>
 						<p class="hint">You can paste the blueprint into My Apps on my.wordpress.net to install it there.</p>
@@ -466,6 +467,7 @@
 		const error = document.querySelector('#error');
 		const blueprintOutput = document.querySelector('#blueprint');
 		const blueprintSummary = document.querySelector('#blueprintSummary');
+		const addCurrentApp = document.querySelector('#addCurrentApp');
 		const playgroundLink = document.querySelector('#playgroundLink');
 		const copyLink = document.querySelector('#copyLink');
 		const copyBlueprint = document.querySelector('#copyBlueprint');
@@ -480,6 +482,7 @@
 		let currentInput = null;
 		let currentInputPlayable = false;
 		let shouldStageCurrentInput = false;
+		let manualUrlEntry = false;
 		let stagedApps = [];
 		let analyzeRequestId = 0;
 		let lastPagesUrlValue = '';
@@ -594,7 +597,14 @@
 			if (enabled && currentInput && shouldStageCurrentInput) {
 				upsertCurrentAppInPlayground();
 			}
+			updateAddCurrentAppButton();
 			renderPlaygroundState();
+		}
+
+		function updateAddCurrentAppButton() {
+			const showButton = manualUrlEntry && currentInput;
+			addCurrentApp.classList.toggle('hidden', !showButton);
+			addCurrentApp.disabled = !showButton || !currentInputPlayable;
 		}
 
 		function resetGenerator() {
@@ -609,6 +619,7 @@
 			currentInput = null;
 			currentInputPlayable = false;
 			shouldStageCurrentInput = false;
+			manualUrlEntry = false;
 			stagedApps = [];
 			lastPagesUrlValue = '';
 			committedPagesUrlValue = '';
@@ -1298,11 +1309,11 @@
 
 		form.addEventListener('submit', (event) => {
 			event.preventDefault();
-			committedPagesUrlValue = normalizeCommittedUrl(pagesUrl.value);
-			update({ stageWhenReady: true });
+			update();
 		});
 
 		function updateFromPagesUrlInput() {
+			manualUrlEntry = true;
 			if (pagesUrl.value !== lastPagesUrlValue) {
 				slug.value = '';
 				pluginName.value = '';
@@ -1320,8 +1331,7 @@
 				pluginAuthor.value = '';
 				lastPagesUrlValue = pagesUrl.value;
 			}
-			committedPagesUrlValue = normalizeCommittedUrl(pagesUrl.value);
-			update({ stageWhenReady: true });
+			update();
 		}
 
 		function normalizeCommittedUrl(value) {
@@ -1337,7 +1347,10 @@
 		});
 
 		function updateFromCurrentAppOptions() {
-			update({ stageWhenReady: normalizeCommittedUrl(pagesUrl.value) === committedPagesUrlValue });
+			update({
+				stageWhenReady: Boolean(committedPagesUrlValue)
+					&& normalizeCommittedUrl(pagesUrl.value) === committedPagesUrlValue,
+			});
 		}
 
 		function bindExampleLinks() {
@@ -1350,6 +1363,7 @@
 					pluginName.value = '';
 					pluginAuthor.value = '';
 					lastPagesUrlValue = pagesUrl.value;
+					manualUrlEntry = false;
 					committedPagesUrlValue = normalizeCommittedUrl(pagesUrl.value);
 					repo.value = inferred.url;
 					update({ stageWhenReady: true });
@@ -1529,8 +1543,20 @@
 			pluginName.value = entry.title;
 			pluginAuthor.value = entry.author;
 			lastPagesUrlValue = pagesUrl.value;
+			manualUrlEntry = false;
 			committedPagesUrlValue = normalizeCommittedUrl(pagesUrl.value);
 			update({ stageWhenReady: true });
+		}
+
+		function addCurrentAppFromButton() {
+			if (!currentInputPlayable || !currentInput) {
+				return;
+			}
+			committedPagesUrlValue = normalizeCommittedUrl(pagesUrl.value);
+			upsertCurrentAppInPlayground();
+			manualUrlEntry = false;
+			updateAddCurrentAppButton();
+			renderPlaygroundState();
 		}
 
 		function upsertCurrentAppInPlayground() {
@@ -1626,6 +1652,7 @@
 			}
 		}
 
+		addCurrentApp.addEventListener('click', addCurrentAppFromButton);
 		clearApps.addEventListener('click', clearStagedApps);
 		copyLink.addEventListener('click', () => copyText(copyLink, currentPlaygroundUrl));
 		copyBlueprint.addEventListener('click', () => copyText(copyBlueprint, currentBlueprintJson));
@@ -1638,8 +1665,7 @@
 		loadExamples();
 		lastPagesUrlValue = pagesUrl.value;
 		if (pagesUrl.value) {
-			committedPagesUrlValue = normalizeCommittedUrl(pagesUrl.value);
-			update({ stageWhenReady: true });
+			update();
 		} else {
 			resetGenerator();
 		}
