@@ -392,12 +392,18 @@
 		let analyzeRequestId = 0;
 		let lastPagesUrlValue = '';
 
+		const legacyDefaultPagesUrl = 'https://jonathanbossenger.github.io/times-table-tester/';
 		const state = new URLSearchParams(window.location.search);
-		pagesUrl.value = state.get('pagesUrl') || state.get('pages') || '';
-		repo.value = state.get('repo') || '';
-		slug.value = state.get('slug') || '';
-		pluginName.value = state.get('pluginName') || '';
-		pluginAuthor.value = state.get('pluginAuthor') || '';
+		const initialPagesUrl = state.get('pagesUrl') || state.get('pages') || '';
+		const isLegacyDefaultLoad = initialPagesUrl === legacyDefaultPagesUrl;
+		if (isLegacyDefaultLoad) {
+			window.history.replaceState(null, '', window.location.pathname);
+		}
+		pagesUrl.value = isLegacyDefaultLoad ? '' : initialPagesUrl;
+		repo.value = isLegacyDefaultLoad ? '' : state.get('repo') || '';
+		slug.value = isLegacyDefaultLoad ? '' : state.get('slug') || '';
+		pluginName.value = isLegacyDefaultLoad ? '' : state.get('pluginName') || '';
+		pluginAuthor.value = isLegacyDefaultLoad ? '' : state.get('pluginAuthor') || '';
 
 		function update() {
 			error.style.display = 'none';
