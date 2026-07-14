@@ -232,6 +232,54 @@
 			color: var(--error);
 			font-weight: 650;
 		}
+		.staged-apps {
+			margin-top: 20px;
+			border-top: 1px solid var(--border);
+			padding-top: 16px;
+		}
+		.staged-apps-header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 12px;
+			margin-bottom: 8px;
+		}
+		.staged-apps-header h2 {
+			margin: 0;
+		}
+		.staged-apps-list {
+			display: grid;
+			gap: 8px;
+			margin: 0;
+			padding: 0;
+			list-style: none;
+		}
+		.staged-app {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 12px;
+			padding: 9px 10px;
+			border: 1px solid var(--border);
+			border-radius: 6px;
+			background: #fbfcfe;
+		}
+		.staged-app-title {
+			min-width: 0;
+			font-weight: 650;
+		}
+		.staged-app-title small {
+			display: block;
+			color: var(--muted);
+			font-size: 0.8rem;
+			font-weight: 500;
+			overflow-wrap: anywhere;
+		}
+		.staged-app button {
+			min-height: 32px;
+			padding: 4px 9px;
+			font-size: 0.82rem;
+		}
 		button, .button {
 			display: inline-flex;
 			align-items: center;
@@ -318,6 +366,7 @@
 						<h2>Pick an app</h2>
 						<label for="pagesUrl">App URL</label>
 						<input id="pagesUrl" name="pagesUrl" required autocomplete="off" placeholder="https://owner.github.io/repo/ or https://example.com/app.html">
+						<p class="hint">Add the current app to the Playground list, then pick another app.</p>
 					</div>
 				</div>
 
@@ -326,42 +375,52 @@
 					<div class="step-body">
 						<h2>Open it in WordPress Playground</h2>
 						<div class="actions">
+							<button id="addApp" type="button" disabled>Add to Playground</button>
 							<a id="playgroundLink" class="button primary" href="#" target="_blank" rel="noopener" aria-disabled="true">Open in Playground</a>
 							<button id="copyLink" type="button" disabled>Copy Playground Link</button>
 							<button id="copyBlueprint" type="button" disabled>Copy Blueprint JSON</button>
 						</div>
 						<div id="error" class="error"></div>
 					</div>
-				</div>
-			</div>
-
-			<div class="secondary-options">
-				<details id="advancedOptions" class="advanced-options">
-					<summary>Advanced options</summary>
-					<input id="repo" name="repo" type="hidden">
-
-					<div class="row">
-						<div>
-							<label for="slug">Plugin slug</label>
-							<input id="slug" name="slug" placeholder="app-name">
-						</div>
-						<div>
-							<label for="pluginName">Plugin name</label>
-							<input id="pluginName" name="pluginName" placeholder="App Name">
-						</div>
-						<div>
-							<label for="pluginAuthor">Plugin author</label>
-							<input id="pluginAuthor" name="pluginAuthor" placeholder="Author name">
-						</div>
 					</div>
-				</details>
+				</div>
 
-				<details class="blueprint-details">
-					<summary id="blueprintSummary">View generated blueprint</summary>
-					<label for="blueprint">Blueprint JSON</label>
-					<textarea id="blueprint" readonly></textarea>
-				</details>
-			</div>
+				<div class="staged-apps">
+					<div class="staged-apps-header">
+						<h2 id="stagedAppsHeading">Playground apps (0)</h2>
+						<button id="clearApps" type="button" disabled>Clear apps</button>
+					</div>
+					<ul id="stagedApps" class="staged-apps-list"></ul>
+					<p id="stagedAppsEmpty" class="hint">No apps added yet.</p>
+				</div>
+
+				<div class="secondary-options">
+					<details id="advancedOptions" class="advanced-options">
+						<summary>Advanced options</summary>
+						<input id="repo" name="repo" type="hidden">
+
+						<div class="row">
+							<div>
+								<label for="slug">Plugin slug</label>
+								<input id="slug" name="slug" placeholder="app-name">
+							</div>
+							<div>
+								<label for="pluginName">Plugin name</label>
+								<input id="pluginName" name="pluginName" placeholder="App Name">
+							</div>
+							<div>
+								<label for="pluginAuthor">Plugin author</label>
+								<input id="pluginAuthor" name="pluginAuthor" placeholder="Author name">
+							</div>
+						</div>
+					</details>
+
+					<details class="blueprint-details">
+						<summary id="blueprintSummary">View generated blueprint</summary>
+							<label for="blueprint">Blueprint JSON</label>
+							<textarea id="blueprint" readonly></textarea>
+						</details>
+					</div>
 
 			<div class="examples-heading">Examples and sources:</div>
 			<ul id="examples" class="examples"></ul>
@@ -381,14 +440,21 @@
 		const error = document.querySelector('#error');
 		const blueprintOutput = document.querySelector('#blueprint');
 		const blueprintSummary = document.querySelector('#blueprintSummary');
+		const addApp = document.querySelector('#addApp');
 		const playgroundLink = document.querySelector('#playgroundLink');
 		const copyLink = document.querySelector('#copyLink');
 		const copyBlueprint = document.querySelector('#copyBlueprint');
+		const clearApps = document.querySelector('#clearApps');
+		const stagedAppsList = document.querySelector('#stagedApps');
+		const stagedAppsHeading = document.querySelector('#stagedAppsHeading');
+		const stagedAppsEmpty = document.querySelector('#stagedAppsEmpty');
 		const examples = document.querySelector('#examples');
 
 		let currentPlaygroundUrl = '';
 		let currentBlueprintJson = '';
 		let currentInput = null;
+		let currentInputPlayable = false;
+		let stagedApps = [];
 		let analyzeRequestId = 0;
 		let lastPagesUrlValue = '';
 
@@ -402,6 +468,7 @@
 
 		function update() {
 			error.style.display = 'none';
+			currentInputPlayable = false;
 			try {
 				const inputUrl = normalizeInputUrl(pagesUrl.value);
 				if (isExplicitHtmlPageUrl(inputUrl)) {
@@ -418,6 +485,7 @@
 				currentPlaygroundUrl = '';
 				currentBlueprintJson = '';
 				currentInput = null;
+				currentInputPlayable = false;
 				setPlayable(false);
 				error.textContent = err.message;
 				error.style.display = 'block';
@@ -493,10 +561,9 @@
 		}
 
 		function setPlayable(enabled) {
-			playgroundLink.href = enabled ? currentPlaygroundUrl : '#';
-			playgroundLink.setAttribute('aria-disabled', enabled ? 'false' : 'true');
-			copyLink.disabled = !enabled;
-			copyBlueprint.disabled = !enabled;
+			currentInputPlayable = enabled;
+			addApp.disabled = !enabled || !currentInput;
+			renderPlaygroundState();
 		}
 
 		function resetGenerator() {
@@ -509,20 +576,68 @@
 			currentPlaygroundUrl = '';
 			currentBlueprintJson = '';
 			currentInput = null;
+			currentInputPlayable = false;
+			stagedApps = [];
 			lastPagesUrlValue = '';
 			blueprintOutput.value = '';
 			blueprintSummary.textContent = 'View generated blueprint';
 			error.style.display = 'none';
 			setPlayable(false);
+			renderStagedApps();
 		}
 
 		function renderBlueprint(input) {
-			const blueprint = buildBlueprint(input);
-			const playgroundBlueprint = buildBlueprint({ ...input, includeMyApps: true });
+			const blueprintInput = buildCombinedInput(input ? [input] : []);
+			const blueprint = buildBlueprint(blueprintInput);
+			const playgroundBlueprint = buildBlueprint({ ...blueprintInput, includeMyApps: true });
 			currentBlueprintJson = JSON.stringify(blueprint, null, '\t');
 			currentPlaygroundUrl = buildPlaygroundUrl(playgroundBlueprint);
 			blueprintOutput.value = currentBlueprintJson;
 			blueprintSummary.textContent = `View generated blueprint (${blueprint.steps.length} steps)`;
+		}
+
+		function renderPlaygroundState() {
+			const apps = stagedApps;
+			if (!apps.length) {
+				currentPlaygroundUrl = '';
+				currentBlueprintJson = '';
+				blueprintOutput.value = '';
+				blueprintSummary.textContent = 'View generated blueprint';
+				playgroundLink.href = '#';
+				playgroundLink.setAttribute('aria-disabled', 'true');
+				copyLink.disabled = true;
+				copyBlueprint.disabled = true;
+				clearApps.disabled = stagedApps.length === 0;
+				return;
+			}
+
+			renderBlueprintInput(apps);
+			playgroundLink.href = currentPlaygroundUrl;
+			playgroundLink.setAttribute('aria-disabled', 'false');
+			copyLink.disabled = false;
+			copyBlueprint.disabled = false;
+			clearApps.disabled = stagedApps.length === 0;
+		}
+
+		function renderBlueprintInput(apps) {
+			const blueprintInput = buildCombinedInput(apps);
+			const blueprint = buildBlueprint(blueprintInput);
+			const playgroundBlueprint = buildBlueprint({ ...blueprintInput, includeMyApps: true });
+			currentBlueprintJson = JSON.stringify(blueprint, null, '\t');
+			currentPlaygroundUrl = buildPlaygroundUrl(playgroundBlueprint);
+			blueprintOutput.value = currentBlueprintJson;
+			blueprintSummary.textContent = `View generated blueprint (${blueprint.steps.length} steps)`;
+		}
+
+		function buildCombinedInput(apps) {
+			if (apps.length === 1) {
+				return apps[0];
+			}
+			return {
+				apps,
+				converterRef: 'main',
+				converterRefType: 'branch',
+			};
 		}
 
 		function logAnalysis(message, state = 'info') {
@@ -1365,6 +1480,85 @@
 			update();
 		}
 
+		function addCurrentAppToPlayground() {
+			if (!currentInputPlayable || !currentInput) {
+				return;
+			}
+			const app = {
+				...currentInput,
+				slug: nextAvailableSlug(currentInput.slug),
+			};
+			stagedApps.push(app);
+			clearCurrentApp();
+			renderStagedApps();
+			renderPlaygroundState();
+			replaceHistory({});
+		}
+
+		function clearCurrentApp() {
+			analyzeRequestId++;
+			pagesUrl.value = '';
+			repo.value = '';
+			slug.value = '';
+			pluginName.value = '';
+			pluginAuthor.value = '';
+			currentInput = null;
+			currentInputPlayable = false;
+			addApp.disabled = true;
+			lastPagesUrlValue = '';
+			error.style.display = 'none';
+		}
+
+		function nextAvailableSlug(value) {
+			const base = toSlug(value);
+			const used = new Set(stagedApps.map((app) => app.slug));
+			if (!used.has(base)) {
+				return base;
+			}
+			let index = 2;
+			while (used.has(`${base}-${index}`)) {
+				index += 1;
+			}
+			return `${base}-${index}`;
+		}
+
+		function renderStagedApps() {
+			stagedAppsHeading.textContent = `Playground apps (${stagedApps.length})`;
+			stagedAppsList.replaceChildren();
+			stagedAppsEmpty.classList.toggle('hidden', stagedApps.length > 0);
+			clearApps.disabled = stagedApps.length === 0;
+
+			stagedApps.forEach((app, index) => {
+				const item = document.createElement('li');
+				item.className = 'staged-app';
+
+				const title = document.createElement('span');
+				title.className = 'staged-app-title';
+				title.textContent = app.pluginName || toTitle(app.slug);
+				const meta = document.createElement('small');
+				meta.textContent = app.sourceUrl || app.repo || app.slug;
+				title.append(meta);
+
+				const remove = document.createElement('button');
+				remove.type = 'button';
+				remove.textContent = 'Remove';
+				remove.addEventListener('click', () => {
+					stagedApps.splice(index, 1);
+					renderStagedApps();
+					renderPlaygroundState();
+				});
+
+				item.append(title, remove);
+				stagedAppsList.append(item);
+			});
+		}
+
+		function clearStagedApps() {
+			stagedApps = [];
+			renderStagedApps();
+			renderPlaygroundState();
+		}
+
 		async function loadExamples() {
 			try {
 				const response = await fetch('./examples.json');
@@ -1382,6 +1576,8 @@
 			}
 		}
 
+		addApp.addEventListener('click', addCurrentAppToPlayground);
+		clearApps.addEventListener('click', clearStagedApps);
 		copyLink.addEventListener('click', () => copyText(copyLink, currentPlaygroundUrl));
 		copyBlueprint.addEventListener('click', () => copyText(copyBlueprint, currentBlueprintJson));
 		window.addEventListener('pageshow', () => {
