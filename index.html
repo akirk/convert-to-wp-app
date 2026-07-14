@@ -27,7 +27,7 @@
 			line-height: 1.5;
 		}
 		main {
-			width: min(860px, calc(100% - 32px));
+			width: min(1100px, calc(100% - 32px));
 			margin: 0 auto;
 			padding: 48px 0;
 		}
@@ -53,9 +53,13 @@
 		.step {
 			display: flex;
 			gap: 14px;
-			margin-top: 24px;
 		}
-		.step:first-child { margin-top: 0; }
+		.primary-steps {
+			display: grid;
+			grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);
+			gap: 24px;
+			align-items: start;
+		}
 		.step-number {
 			display: inline-flex;
 			align-items: center;
@@ -118,7 +122,7 @@
 			padding-left: 20px;
 		}
 		.examples-heading {
-			margin: 16px 0 0;
+			margin: 22px 0 0;
 			font-weight: 700;
 			font-size: 0.9rem;
 		}
@@ -276,6 +280,9 @@
 			border-top: 1px solid var(--border);
 			padding-top: 16px;
 		}
+		.advanced-options {
+			margin-top: 24px;
+		}
 		summary {
 			cursor: pointer;
 			font-weight: 700;
@@ -288,6 +295,7 @@
 		.hidden { display: none; }
 		@media (max-width: 680px) {
 			main { padding: 28px 0; }
+			.primary-steps { grid-template-columns: 1fr; }
 			.row { grid-template-columns: 1fr; }
 			.step { gap: 10px; }
 			.actions { flex-direction: column; }
@@ -302,58 +310,60 @@
 		<p class="lede">Create a WordPress Playground link from a GitHub Pages app or a single HTML page. The blueprint loads the static files, checks out the converter, and turns them into a wp-app plugin.</p>
 
 		<form id="generator" class="panel">
-			<div class="step">
-				<span class="step-number">1</span>
-				<div class="step-body">
-					<h2>Pick an app</h2>
-					<label for="pagesUrl">App URL</label>
-					<input id="pagesUrl" name="pagesUrl" required placeholder="https://owner.github.io/repo/ or https://example.com/app.html">
+			<div class="primary-steps">
+				<div class="step">
+					<span class="step-number">1</span>
+					<div class="step-body">
+						<h2>Pick an app</h2>
+						<label for="pagesUrl">App URL</label>
+						<input id="pagesUrl" name="pagesUrl" required placeholder="https://owner.github.io/repo/ or https://example.com/app.html">
 
-					<div class="examples-heading">Examples and sources:</div>
-					<ul id="examples" class="examples"></ul>
-
-					<div id="analysis" class="analysis hidden" data-state="idle"></div>
-
-					<details id="advancedOptions">
-						<summary>Advanced options</summary>
-						<input id="repo" name="repo" type="hidden">
-
-						<div class="row">
-							<div>
-								<label for="slug">Plugin slug</label>
-								<input id="slug" name="slug" placeholder="app-name">
-							</div>
-							<div>
-								<label for="pluginName">Plugin name</label>
-								<input id="pluginName" name="pluginName" placeholder="App Name">
-							</div>
-							<div>
-								<label for="pluginAuthor">Plugin author</label>
-								<input id="pluginAuthor" name="pluginAuthor" placeholder="Author name">
-							</div>
-						</div>
-					</details>
-				</div>
-			</div>
-
-			<div class="step">
-				<span class="step-number">2</span>
-				<div class="step-body">
-					<h2>Open it in WordPress Playground</h2>
-					<div class="actions">
-						<a id="playgroundLink" class="button primary" href="#" target="_blank" rel="noopener" aria-disabled="true">Open Playground</a>
-						<button id="copyLink" type="button" disabled>Copy Playground Link</button>
-						<button id="copyBlueprint" type="button" disabled>Copy Blueprint JSON</button>
+						<div id="analysis" class="analysis hidden" data-state="idle"></div>
 					</div>
-					<div id="error" class="error"></div>
+				</div>
 
-					<details class="blueprint-details">
-						<summary id="blueprintSummary">View generated blueprint</summary>
-						<label for="blueprint">Blueprint JSON</label>
-						<textarea id="blueprint" readonly></textarea>
-					</details>
+				<div class="step">
+					<span class="step-number">2</span>
+					<div class="step-body">
+						<h2>Open it in WordPress Playground</h2>
+						<div class="actions">
+							<a id="playgroundLink" class="button primary" href="#" target="_blank" rel="noopener" aria-disabled="true">Open Playground</a>
+							<button id="copyLink" type="button" disabled>Copy Playground Link</button>
+							<button id="copyBlueprint" type="button" disabled>Copy Blueprint JSON</button>
+						</div>
+						<div id="error" class="error"></div>
+
+						<details class="blueprint-details">
+							<summary id="blueprintSummary">View generated blueprint</summary>
+							<label for="blueprint">Blueprint JSON</label>
+							<textarea id="blueprint" readonly></textarea>
+						</details>
+					</div>
 				</div>
 			</div>
+
+			<details id="advancedOptions" class="advanced-options">
+				<summary>Advanced options</summary>
+				<input id="repo" name="repo" type="hidden">
+
+				<div class="row">
+					<div>
+						<label for="slug">Plugin slug</label>
+						<input id="slug" name="slug" placeholder="app-name">
+					</div>
+					<div>
+						<label for="pluginName">Plugin name</label>
+						<input id="pluginName" name="pluginName" placeholder="App Name">
+					</div>
+					<div>
+						<label for="pluginAuthor">Plugin author</label>
+						<input id="pluginAuthor" name="pluginAuthor" placeholder="Author name">
+					</div>
+				</div>
+			</details>
+
+			<div class="examples-heading">Examples and sources:</div>
+			<ul id="examples" class="examples"></ul>
 		</form>
 	</main>
 
