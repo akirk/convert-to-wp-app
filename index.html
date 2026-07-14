@@ -479,9 +479,11 @@
 		let currentBlueprintJson = '';
 		let currentInput = null;
 		let currentInputPlayable = false;
+		let shouldStageCurrentInput = false;
 		let stagedApps = [];
 		let analyzeRequestId = 0;
 		let lastPagesUrlValue = '';
+		let committedPagesUrlValue = '';
 
 		const state = new URLSearchParams(window.location.search);
 		const initialPagesUrl = state.get('pagesUrl') || state.get('pages') || '';
@@ -491,9 +493,10 @@
 		pluginName.value = state.get('pluginName') || '';
 		pluginAuthor.value = state.get('pluginAuthor') || '';
 
-		function update() {
+		function update(options = {}) {
 			error.style.display = 'none';
 			currentInputPlayable = false;
+			shouldStageCurrentInput = Boolean(options.stageWhenReady);
 			try {
 				const inputUrl = normalizeInputUrl(pagesUrl.value);
 				if (isExplicitHtmlPageUrl(inputUrl)) {
@@ -511,6 +514,7 @@
 				currentBlueprintJson = '';
 				currentInput = null;
 				currentInputPlayable = false;
+				shouldStageCurrentInput = false;
 				setPlayable(false);
 				error.textContent = err.message;
 				error.style.display = 'block';
@@ -587,7 +591,7 @@
 
 		function setPlayable(enabled) {
 			currentInputPlayable = enabled;
-			if (enabled && currentInput) {
+			if (enabled && currentInput && shouldStageCurrentInput) {
 				upsertCurrentAppInPlayground();
 			}
 			renderPlaygroundState();
@@ -604,8 +608,10 @@
 			currentBlueprintJson = '';
 			currentInput = null;
 			currentInputPlayable = false;
+			shouldStageCurrentInput = false;
 			stagedApps = [];
 			lastPagesUrlValue = '';
+			committedPagesUrlValue = '';
 			blueprintOutput.value = '';
 			blueprintSummary.textContent = 'View generated blueprint';
 			error.style.display = 'none';
@@ -1292,29 +1298,47 @@
 
 		form.addEventListener('submit', (event) => {
 			event.preventDefault();
-			update();
-			if (currentPlaygroundUrl) {
-				window.open(currentPlaygroundUrl, '_blank', 'noopener');
-			}
+			committedPagesUrlValue = normalizeCommittedUrl(pagesUrl.value);
+			update({ stageWhenReady: true });
 		});
 
-		function updateFromPagesUrlChange() {
+		function updateFromPagesUrlInput() {
+			if (pagesUrl.value !== lastPagesUrlValue) {
+				slug.value = '';
+				pluginName.value = '';
+				pluginAuthor.value = '';
+				lastPagesUrlValue = pagesUrl.value;
+				committedPagesUrlValue = '';
+			}
+			update();
+		}
+
+		function updateFromPagesUrlCommit() {
 			if (pagesUrl.value !== lastPagesUrlValue) {
 				slug.value = '';
 				pluginName.value = '';
 				pluginAuthor.value = '';
 				lastPagesUrlValue = pagesUrl.value;
 			}
-			update();
+			committedPagesUrlValue = normalizeCommittedUrl(pagesUrl.value);
+			update({ stageWhenReady: true });
 		}
 
-		pagesUrl.addEventListener('input', updateFromPagesUrlChange);
-		pagesUrl.addEventListener('change', updateFromPagesUrlChange);
+		function normalizeCommittedUrl(value) {
+			return String(value || '').trim();
+		}
+
+		pagesUrl.addEventListener('input', updateFromPagesUrlInput);
+		pagesUrl.addEventListener('change', updateFromPagesUrlCommit);
 
 		[slug, pluginName, pluginAuthor].forEach((field) => {
-			field.addEventListener('input', update);
-			field.addEventListener('change', update);
+			field.addEventListener('input', updateFromCurrentAppOptions);
+			field.addEventListener('change', updateFromCurrentAppOptions);
 		});
+
+		function updateFromCurrentAppOptions() {
+			update({ stageWhenReady: normalizeCommittedUrl(pagesUrl.value) === committedPagesUrlValue });
+		}
 
 		function bindExampleLinks() {
 			document.querySelectorAll('.example-use').forEach((button) => {
@@ -1326,8 +1350,9 @@
 					pluginName.value = '';
 					pluginAuthor.value = '';
 					lastPagesUrlValue = pagesUrl.value;
+					committedPagesUrlValue = normalizeCommittedUrl(pagesUrl.value);
 					repo.value = inferred.url;
-					update();
+					update({ stageWhenReady: true });
 				});
 			});
 			document.querySelectorAll('.challenge-source').forEach((details) => {
@@ -1504,7 +1529,8 @@
 			pluginName.value = entry.title;
 			pluginAuthor.value = entry.author;
 			lastPagesUrlValue = pagesUrl.value;
-			update();
+			committedPagesUrlValue = normalizeCommittedUrl(pagesUrl.value);
+			update({ stageWhenReady: true });
 		}
 
 		function upsertCurrentAppInPlayground() {
@@ -1612,7 +1638,8 @@
 		loadExamples();
 		lastPagesUrlValue = pagesUrl.value;
 		if (pagesUrl.value) {
-			update();
+			committedPagesUrlValue = normalizeCommittedUrl(pagesUrl.value);
+			update({ stageWhenReady: true });
 		} else {
 			resetGenerator();
 		}
