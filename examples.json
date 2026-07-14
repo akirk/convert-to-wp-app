@@ -8,6 +8,25 @@
 		"pagesUrl": "https://ashfame.github.io/sojourn/"
 	},
 	{
+		"name": "WordPress Museum",
+		"pagesUrl": "https://janjakes.github.io/wordpress-museum/",
+		"description": "Standalone Three.js WordPress Museum prototype"
+	},
+	{
+		"name": "Playground Step Library",
+		"pagesUrl": "https://akirk.github.io/playground-step-library/",
+		"description": "Custom Steps for WordPress Playground"
+	},
+	{
+		"name": "Cosmic Defender 3D",
+		"pagesUrl": "https://jonathanbossenger.github.io/cosmic-defender-3d/"
+	},
+	{
+		"name": "Daycraft",
+		"pagesUrl": "https://ashfame.github.io/daycraft/",
+		"description": "Itinerary planner browser based app"
+	},
+	{
 		"name": "One HTML Page Challenge",
 		"url": "https://onehtmlpagechallenge.com/",
 		"entriesUrl": "https://raw.githubusercontent.com/Metroxe/one-html-page-challenge/master/entries.js"
