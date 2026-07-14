@@ -407,7 +407,9 @@
 			error.style.display = 'none';
 			try {
 				const inputUrl = normalizeInputUrl(pagesUrl.value);
-				if (isGitHubPagesAppUrl(inputUrl)) {
+				if (isExplicitHtmlPageUrl(inputUrl)) {
+					updateSingleHtmlPage(inputUrl);
+				} else if (isGitHubPagesAppUrl(inputUrl)) {
 					updateGitHubPages(inputUrl);
 				} else if (isSingleHtmlPageUrl(inputUrl)) {
 					updateSingleHtmlPage(inputUrl);
@@ -483,6 +485,7 @@
 			analysis.dataset.state = 'ok';
 			analysis.textContent = 'Using this HTML page directly. Playground will download it during setup.';
 			setPlayable(true);
+			analyzeSingleHtmlPage(htmlPage, currentInput);
 
 			replaceHistory({
 				pagesUrl: htmlPage.url,
@@ -575,6 +578,15 @@
 			}
 		}
 
+		function isExplicitHtmlPageUrl(value) {
+			try {
+				const url = new URL(value);
+				return /^https?:$/.test(url.protocol) && /\.html?$/i.test(url.pathname);
+			} catch {
+				return false;
+			}
+		}
+
 		function isGitHubPagesAppUrl(value) {
 			try {
 				parseGitHubPagesUrl(value);
@@ -616,6 +628,35 @@
 				}
 			}
 			return url.hostname.replace(/^www\./i, '').split('.')[0] || 'html-page';
+		}
+
+		async function analyzeSingleHtmlPage(htmlPage, input) {
+			const requestId = ++analyzeRequestId;
+			try {
+				const liveHtml = await fetchText(htmlPage.url);
+				if (requestId !== analyzeRequestId) {
+					return;
+				}
+				const snapshotFiles = await crawlHtmlPageSnapshot(htmlPage.url, liveHtml);
+				if (requestId !== analyzeRequestId) {
+					return;
+				}
+				currentInput = {
+					...input,
+					snapshotFiles,
+				};
+				renderBlueprint(currentInput);
+				analysis.dataset.state = 'ok';
+				analysis.textContent = `Found ${snapshotFiles.length} page file${snapshotFiles.length === 1 ? '' : 's'} to snapshot during Playground setup.`;
+				setPlayable(true);
+			} catch (err) {
+				if (requestId !== analyzeRequestId) {
+					return;
+				}
+				analysis.dataset.state = 'ok';
+				analysis.textContent = 'Using this HTML page directly. Playground will download it during setup.';
+				setPlayable(true);
+			}
 		}
 
 		async function analyzePagesInput(inferred, input) {
@@ -787,6 +828,58 @@
 			return snapshotFiles;
 		}
 
+		async function crawlHtmlPageSnapshot(pageUrl, liveHtml) {
+			const entryUrl = new URL(pageUrl);
+			const baseUrl = new URL('.', entryUrl);
+			const files = new Map();
+			addHtmlPageSnapshotFile(files, baseUrl, entryUrl, 'index.html');
+			const htmlAssetUrls = extractSameOriginHtmlAssetUrls(liveHtml, entryUrl);
+			for (const url of htmlAssetUrls) {
+				addHtmlPageSnapshotFile(files, baseUrl, url);
+			}
+
+			const crawlQueue = [...htmlAssetUrls];
+			const seen = new Set(crawlQueue.map((url) => url.href));
+			for (const url of crawlQueue) {
+				const path = htmlPageSnapshotPath(baseUrl, url);
+				if (!path) {
+					continue;
+				}
+				if (path.endsWith('.css')) {
+					const css = await fetchText(url.href).catch(() => '');
+					for (const assetUrl of extractSameOriginCssAssetUrls(css, url)) {
+						if (!seen.has(assetUrl.href)) {
+							seen.add(assetUrl.href);
+							crawlQueue.push(assetUrl);
+						}
+						addHtmlPageSnapshotFile(files, baseUrl, assetUrl);
+					}
+				}
+				if (path.endsWith('.js')) {
+					const js = await fetchText(url.href).catch(() => '');
+					for (const assetUrl of extractSameOriginJsAssetUrls(js, url)) {
+						if (!seen.has(assetUrl.href)) {
+							seen.add(assetUrl.href);
+							crawlQueue.push(assetUrl);
+						}
+						addHtmlPageSnapshotFile(files, baseUrl, assetUrl);
+					}
+				}
+				if (path.endsWith('manifest.json') || path.endsWith('.webmanifest')) {
+					const manifest = await fetchJson(url.href).catch(() => null);
+					for (const assetUrl of extractSameOriginManifestAssetUrls(manifest, url)) {
+						addHtmlPageSnapshotFile(files, baseUrl, assetUrl);
+					}
+				}
+			}
+
+			const snapshotFiles = (await filterDownloadableFiles([...files.values()])).sort((a, b) => a.path.localeCompare(b.path));
+			if (!snapshotFiles.some((file) => file.path === 'index.html')) {
+				throw new Error('Could not snapshot index.html.');
+			}
+			return snapshotFiles;
+		}
+
 		function addSnapshotFile(files, baseUrl, url) {
 			if (!isSamePagesAppUrl(baseUrl, url)) {
 				return;
@@ -796,6 +889,28 @@
 				return;
 			}
 			files.set(path, { path, url: url.href.replace(/#.*$/, '') });
+		}
+
+		function addHtmlPageSnapshotFile(files, baseUrl, url, path = '') {
+			if (url.origin !== baseUrl.origin) {
+				return;
+			}
+			const selectedPath = path || htmlPageSnapshotPath(baseUrl, url);
+			if (!selectedPath || selectedPath.endsWith('/')) {
+				return;
+			}
+			files.set(selectedPath, { path: selectedPath, url: url.href.replace(/#.*$/, '') });
+		}
+
+		function htmlPageSnapshotPath(baseUrl, url) {
+			if (url.origin !== baseUrl.origin) {
+				return '';
+			}
+			if (url.pathname.startsWith(baseUrl.pathname)) {
+				const path = decodeURIComponent(url.pathname.slice(baseUrl.pathname.length)).replace(/^\/+/, '');
+				return path || 'index.html';
+			}
+			return decodeURIComponent(url.pathname).replace(/^\/+/, '');
 		}
 
 		function extractHtmlAssetUrls(html, baseUrl) {
@@ -821,6 +936,32 @@
 			return uniqueUrls(urls);
 		}
 
+		function extractSameOriginHtmlAssetUrls(html, pageUrl) {
+			const urls = [];
+			const doc = new DOMParser().parseFromString(html, 'text/html');
+			for (const element of doc.querySelectorAll('[src], [href], [content]')) {
+				for (const attr of ['src', 'href', 'content']) {
+					const value = element.getAttribute(attr);
+					if (!value) {
+						continue;
+					}
+					if (attr === 'content' && !/\.(?:png|jpe?g|gif|webp|svg|ico)(?:[?#]|$)/i.test(value)) {
+						continue;
+					}
+					for (const part of splitSrcset(value)) {
+						const url = toSameOriginUrl(part, pageUrl);
+						if (url) {
+							urls.push(url);
+						}
+					}
+				}
+			}
+			for (const script of doc.querySelectorAll('script:not([src])')) {
+				urls.push(...extractSameOriginJsAssetUrls(script.textContent || '', pageUrl));
+			}
+			return uniqueUrls(urls);
+		}
+
 		function extractCssAssetUrls(css, cssUrl, baseUrl) {
 			const urls = [];
 			const pattern = /url\(\s*(['"]?)([^'")]+)\1\s*\)/g;
@@ -834,12 +975,38 @@
 			return uniqueUrls(urls);
 		}
 
+		function extractSameOriginCssAssetUrls(css, cssUrl) {
+			const urls = [];
+			const pattern = /url\(\s*(['"]?)([^'")]+)\1\s*\)/g;
+			let match;
+			while ((match = pattern.exec(css))) {
+				const url = toSameOriginUrl(match[2], cssUrl);
+				if (url) {
+					urls.push(url);
+				}
+			}
+			return uniqueUrls(urls);
+		}
+
 		function extractJsAssetUrls(js, baseUrl) {
 			const urls = [];
 			const pattern = /['"`]((?:\.\/|\/)[^'"`]+?\.(?:png|jpe?g|gif|webp|svg|ico|json|wasm|woff2?|ttf|otf|mp3|mp4|webm|pdf))(?:[?#][^'"`]*)?['"`]/g;
 			let match;
 			while ((match = pattern.exec(js))) {
 				const url = toSameAppUrl(match[1], baseUrl, baseUrl);
+				if (url) {
+					urls.push(url);
+				}
+			}
+			return uniqueUrls(urls);
+		}
+
+		function extractSameOriginJsAssetUrls(js, jsUrl) {
+			const urls = [];
+			const pattern = /['"`]((?!(?:https?:|data:|blob:|mailto:|tel:|#|javascript:))[^'"`]+?\.(?:png|jpe?g|gif|webp|svg|ico|json|data|unityweb|wasm|woff2?|ttf|otf|mp3|mp4|webm|pdf))(?:[?#][^'"`]*)?['"`]/g;
+			let match;
+			while ((match = pattern.exec(js))) {
+				const url = toSameOriginUrl(match[1], jsUrl);
 				if (url) {
 					urls.push(url);
 				}
@@ -867,6 +1034,26 @@
 			return uniqueUrls(urls);
 		}
 
+		function extractSameOriginManifestAssetUrls(manifest, manifestUrl) {
+			if (!manifest || typeof manifest !== 'object') {
+				return [];
+			}
+			const urls = [];
+			for (const icon of manifest.icons || []) {
+				const url = toSameOriginUrl(icon.src, manifestUrl);
+				if (url) {
+					urls.push(url);
+				}
+			}
+			for (const key of ['start_url', 'scope']) {
+				const url = toSameOriginUrl(manifest[key], manifestUrl);
+				if (url && !url.pathname.endsWith('/')) {
+					urls.push(url);
+				}
+			}
+			return uniqueUrls(urls);
+		}
+
 		function splitSrcset(value) {
 			return String(value).split(',').map((part) => part.trim().split(/\s+/)[0]).filter(Boolean);
 		}
@@ -878,6 +1065,18 @@
 			try {
 				const url = new URL(value, fromUrl);
 				return isSamePagesAppUrl(baseUrl, url) ? url : null;
+			} catch {
+				return null;
+			}
+		}
+
+		function toSameOriginUrl(value, fromUrl) {
+			if (!value || /^(?:data:|blob:|mailto:|tel:|#|javascript:)/i.test(value)) {
+				return null;
+			}
+			try {
+				const url = new URL(value, fromUrl);
+				return url.origin === fromUrl.origin ? url : null;
 			} catch {
 				return null;
 			}
@@ -1024,6 +1223,7 @@
 					const details = document.createElement('details');
 					details.className = 'challenge-source';
 					details.dataset.entriesUrl = item.entriesUrl;
+					details.dataset.entriesType = item.entriesType || 'one-html-page-challenge';
 					const summary = document.createElement('summary');
 					summary.textContent = item.name;
 					const sourceLink = document.createElement('a');
@@ -1047,7 +1247,7 @@
 			const container = details.querySelector('.challenge-entries');
 			try {
 				const text = await fetchText(details.dataset.entriesUrl);
-				const entries = parseChallengeEntries(text);
+				const entries = parseSourceEntries(text, details.dataset.entriesType, details.dataset.entriesUrl);
 				container.replaceChildren();
 				for (const entry of entries) {
 					container.append(renderChallengeEntry(entry));
@@ -1060,6 +1260,13 @@
 			}
 		}
 
+		function parseSourceEntries(text, type, sourceUrl) {
+			if (type === 'games-site') {
+				return parseGamesSiteEntries(text, sourceUrl);
+			}
+			return parseChallengeEntries(text);
+		}
+
 		function parseChallengeEntries(text) {
 			const start = text.indexOf('[');
 			const end = text.lastIndexOf('];');
@@ -1069,13 +1276,36 @@
 			return JSON.parse(text.slice(start, end + 1));
 		}
 
+		function parseGamesSiteEntries(html, sourceUrl) {
+			const doc = new DOMParser().parseFromString(html, 'text/html');
+			const entries = [];
+			const seen = new Set();
+			for (const link of doc.querySelectorAll('a.game-link[href]')) {
+				const title = link.querySelector('.game-title')?.textContent?.trim();
+				if (!title) {
+					continue;
+				}
+				const url = new URL(link.getAttribute('href'), sourceUrl).href;
+				if (seen.has(url)) {
+					continue;
+				}
+				seen.add(url);
+				entries.push({
+					title,
+					url,
+					author: 'Games Site',
+				});
+			}
+			return entries;
+		}
+
 		function renderChallengeEntry(entry) {
 			const row = document.createElement('div');
 			row.className = 'challenge-entry';
 
 			const title = document.createElement('a');
 			title.className = 'challenge-entry-title';
-			title.href = challengeEntryUrl(entry.filename);
+			title.href = sourceEntryUrl(entry);
 			title.target = '_blank';
 			title.rel = 'noopener';
 			title.textContent = entry.title || entry.filename;
@@ -1085,7 +1315,7 @@
 			useButton.textContent = 'Use this';
 			useButton.addEventListener('click', () => {
 				useSingleHtmlExample({
-					url: challengeEntryUrl(entry.filename),
+					url: sourceEntryUrl(entry),
 					title: entry.title || entry.filename,
 					author: entry.author || entry.github || '',
 				});
@@ -1099,8 +1329,8 @@
 			return row;
 		}
 
-		function challengeEntryUrl(filename) {
-			return `https://onehtmlpagechallenge.com/entries/${encodeURIComponent(filename)}`;
+		function sourceEntryUrl(entry) {
+			return entry.url || `https://onehtmlpagechallenge.com/entries/${encodeURIComponent(entry.filename)}`;
 		}
 
 		function useSingleHtmlExample(entry) {
