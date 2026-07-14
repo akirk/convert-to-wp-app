@@ -270,18 +270,18 @@
 					</div>
 					<div id="analysis" class="analysis hidden" data-state="idle"></div>
 
-					<details>
+					<details id="advancedOptions">
 						<summary>Advanced options</summary>
 						<input id="repo" name="repo" type="hidden">
 
 						<div class="row">
 							<div>
 								<label for="slug">Plugin slug</label>
-								<input id="slug" name="slug" placeholder="repo-name">
+								<input id="slug" name="slug" placeholder="app-name">
 							</div>
 							<div>
 								<label for="pluginName">Plugin name</label>
-								<input id="pluginName" name="pluginName" placeholder="Repo Name">
+								<input id="pluginName" name="pluginName" placeholder="App Name">
 							</div>
 							<div>
 								<label for="pluginAuthor">Plugin author</label>
@@ -317,6 +317,7 @@
 		import { buildBlueprint, buildPlaygroundUrl, parseGitHubPagesUrl, parseGitHubRepo, toSlug, toTitle } from './lib/blueprint-generator.js';
 
 		const form = document.querySelector('#generator');
+		const advancedOptions = document.querySelector('#advancedOptions');
 		const pagesUrl = document.querySelector('#pagesUrl');
 		const repo = document.querySelector('#repo');
 		const slug = document.querySelector('#slug');
@@ -338,6 +339,7 @@
 		let currentBlueprintJson = '';
 		let currentInput = null;
 		let analyzeRequestId = 0;
+		let lastInputUrl = '';
 
 		const state = new URLSearchParams(window.location.search);
 		pagesUrl.value = state.get('pagesUrl') || state.get('pages') || 'https://jonathanbossenger.github.io/times-table-tester/';
@@ -350,10 +352,17 @@
 			error.style.display = 'none';
 			try {
 				const inputUrl = normalizeInputUrl(pagesUrl.value);
-				if (isSingleHtmlPageUrl(inputUrl)) {
+				if (lastInputUrl && inputUrl !== lastInputUrl) {
+					slug.value = '';
+					pluginName.value = '';
+				}
+				lastInputUrl = inputUrl;
+				if (isGitHubPagesAppUrl(inputUrl)) {
+					updateGitHubPages(inputUrl);
+				} else if (isSingleHtmlPageUrl(inputUrl)) {
 					updateSingleHtmlPage(inputUrl);
 				} else {
-					updateGitHubPages(inputUrl);
+					throw new Error('Enter a GitHub Pages URL or a single HTML page URL.');
 				}
 			} catch (err) {
 				analyzeRequestId++;
@@ -394,10 +403,17 @@
 
 		function updateSingleHtmlPage(inputUrl) {
 			analyzeRequestId++;
+			advancedOptions.open = true;
 			const htmlPage = parseSingleHtmlPageUrl(inputUrl);
 			repo.value = '';
-			const selectedSlug = slug.value || toSlug(htmlPage.name);
-			const selectedPluginName = pluginName.value || toTitle(htmlPage.name);
+			const selectedSlug = slug.value || htmlPage.slug;
+			const selectedPluginName = pluginName.value || htmlPage.title;
+			if (!slug.value) {
+				slug.value = selectedSlug;
+			}
+			if (!pluginName.value) {
+				pluginName.value = selectedPluginName;
+			}
 			currentInput = getSingleHtmlInput(htmlPage);
 			renderBlueprint(currentInput);
 
@@ -406,7 +422,7 @@
 			pluginSummary.textContent = `${selectedPluginName} at /${selectedSlug}/`;
 			analysis.classList.remove('hidden');
 			analysis.dataset.state = 'ok';
-			analysis.textContent = 'Using this HTML file directly. Playground will download it during setup.';
+			analysis.textContent = 'Using this HTML page directly. Playground will download it during setup.';
 			setPlayable(true);
 
 			replaceHistory({
@@ -463,13 +479,13 @@
 		}
 
 		function getSingleHtmlInput(htmlPage) {
-			const selectedSlug = slug.value || toSlug(htmlPage.name);
+			const selectedSlug = slug.value || htmlPage.slug;
 			return {
 				repo: '',
 				sourceUrl: htmlPage.url,
 				sourceName: htmlPage.name,
 				slug: selectedSlug,
-				pluginName: pluginName.value || toTitle(htmlPage.name),
+				pluginName: pluginName.value || htmlPage.title,
 				pluginAuthor: pluginAuthor.value,
 				converterRef: 'main',
 				converterRefType: 'branch',
@@ -494,7 +510,16 @@
 		function isSingleHtmlPageUrl(value) {
 			try {
 				const url = new URL(value);
-				return /^https?:$/.test(url.protocol) && /\.html?$/i.test(url.pathname);
+				return /^https?:$/.test(url.protocol);
+			} catch {
+				return false;
+			}
+		}
+
+		function isGitHubPagesAppUrl(value) {
+			try {
+				parseGitHubPagesUrl(value);
+				return true;
 			} catch {
 				return false;
 			}
@@ -507,14 +532,31 @@
 			} catch {
 				throw new Error('Use a URL like https://example.com/app.html.');
 			}
-			if (!/^https?:$/.test(url.protocol) || !/\.html?$/i.test(url.pathname)) {
-				throw new Error('Use a single HTML page URL ending in .html or .htm.');
+			if (!/^https?:$/.test(url.protocol)) {
+				throw new Error('Use an HTTP or HTTPS URL for the HTML page.');
 			}
-			const filename = decodeURIComponent(url.pathname.split('/').filter(Boolean).pop() || 'html-page.html');
+			const name = nameFromUrlPath(url);
 			return {
 				url: url.href,
-				name: filename.replace(/\.html?$/i, ''),
+				name,
+				slug: toSlug(name),
+				title: toTitle(name),
 			};
+		}
+
+		function nameFromUrlPath(url) {
+			const genericNames = new Set(['index', 'default', 'home']);
+			const parts = url.pathname
+				.split('/')
+				.map((part) => decodeURIComponent(part).replace(/\.[a-z0-9]+$/i, '').trim())
+				.filter(Boolean);
+			for (let index = parts.length - 1; index >= 0; index--) {
+				const candidate = parts[index];
+				if (!genericNames.has(candidate.toLowerCase())) {
+					return candidate;
+				}
+			}
+			return url.hostname.replace(/^www\./i, '').split('.')[0] || 'html-page';
 		}
 
 		async function analyzePagesInput(inferred, input) {
@@ -857,8 +899,6 @@
 					const inferred = parseGitHubPagesUrl(button.dataset.pagesUrl);
 					pagesUrl.value = inferred.pagesUrl;
 					repo.value = inferred.url;
-					slug.value = toSlug(inferred.name);
-					pluginName.value = toTitle(inferred.name);
 					pluginAuthor.value = '';
 					update();
 				});
