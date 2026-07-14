@@ -393,7 +393,7 @@
 		let lastPagesUrlValue = '';
 
 		const state = new URLSearchParams(window.location.search);
-		pagesUrl.value = state.get('pagesUrl') || state.get('pages') || 'https://jonathanbossenger.github.io/times-table-tester/';
+		pagesUrl.value = state.get('pagesUrl') || state.get('pages') || '';
 		repo.value = state.get('repo') || '';
 		slug.value = state.get('slug') || '';
 		pluginName.value = state.get('pluginName') || '';
@@ -1369,7 +1369,9 @@
 
 		loadExamples();
 		lastPagesUrlValue = pagesUrl.value;
-		update();
+		if (pagesUrl.value) {
+			update();
+		}
 	</script>
 </body>
 </html>
