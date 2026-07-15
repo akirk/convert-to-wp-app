@@ -35,6 +35,7 @@ if ( ! function_exists( 'convert_to_wp_app_playground' ) ) {
 		convert_to_wp_app_mkdir( $asset_dir );
 
 		convert_to_wp_app_copy_directory( $source_dir, $asset_dir, array( '.git', 'node_modules', 'vendor' ) );
+		convert_to_wp_app_rewrite_copied_asset_files( $asset_dir, $slug, $plugin_dir, $source_public_path );
 
 		if ( $source['type'] === 'php-onepager' ) {
 			$template = convert_to_wp_app_create_php_onepager_template( $source['entry'], $slug, $url_path );
@@ -380,6 +381,81 @@ PHP;
 			$url = ltrim( $url, '/' );
 		}
 		return $url !== '' && strpos( $url, '..' ) === false ? $url : null;
+	}
+
+	function convert_to_wp_app_rewrite_copied_asset_files( string $asset_dir, string $slug, string $plugin_dir, string $source_public_path = '' ): void {
+		$source_public_path = trim( $source_public_path, '/' );
+		if ( $source_public_path === '' ) {
+			return;
+		}
+
+		$plugin_file = $plugin_dir . '/' . $slug . '.php';
+		$asset_base_url = function_exists( 'plugins_url' )
+			? plugins_url( 'app/', $plugin_file )
+			: '/wp-content/plugins/' . rawurlencode( $slug ) . '/app/';
+		$asset_base_url = rtrim( $asset_base_url, '/' ) . '/';
+
+		convert_to_wp_app_rewrite_text_asset_files(
+			$asset_dir,
+			static function( string $content ) use ( $source_public_path, $asset_base_url ): string {
+				return convert_to_wp_app_rewrite_public_path_in_content( $content, $source_public_path, $asset_base_url );
+			}
+		);
+	}
+
+	function convert_to_wp_app_rewrite_text_asset_files( string $directory, callable $rewrite ): void {
+		$entries = scandir( $directory );
+		if ( $entries === false ) {
+			throw new RuntimeException( "Could not read directory: {$directory}" );
+		}
+		foreach ( $entries as $entry ) {
+			if ( $entry === '.' || $entry === '..' ) {
+				continue;
+			}
+			$path = $directory . '/' . $entry;
+			if ( is_dir( $path ) && ! is_link( $path ) ) {
+				convert_to_wp_app_rewrite_text_asset_files( $path, $rewrite );
+				continue;
+			}
+			if ( ! convert_to_wp_app_should_rewrite_text_asset_file( $path ) ) {
+				continue;
+			}
+			$content = file_get_contents( $path );
+			if ( $content === false ) {
+				throw new RuntimeException( "Could not read file: {$path}" );
+			}
+			$rewritten = $rewrite( $content );
+			if ( $rewritten !== $content ) {
+				file_put_contents( $path, $rewritten );
+			}
+		}
+	}
+
+	function convert_to_wp_app_should_rewrite_text_asset_file( string $path ): bool {
+		$extension = strtolower( pathinfo( preg_replace( '/\.map$/i', '', $path ), PATHINFO_EXTENSION ) );
+		return in_array( $extension, array( 'css', 'html', 'js', 'json', 'mjs', 'svg', 'txt', 'webmanifest', 'xml' ), true );
+	}
+
+	function convert_to_wp_app_rewrite_public_path_in_content( string $content, string $source_public_path, string $asset_base_url ): string {
+		$source_public_path = trim( $source_public_path, '/' );
+		if ( $source_public_path === '' ) {
+			return $content;
+		}
+
+		$quoted_path = preg_quote( $source_public_path, '/' );
+		$quoted_base = rtrim( $asset_base_url, '/' ) . '/';
+		$rewritten = preg_replace_callback(
+			'/(?<![A-Za-z0-9._~%+\/-])\/' . $quoted_path . '\/([^\'"`\s<>)]+)/',
+			static function( array $matches ) use ( $quoted_base ): string {
+				$path = rawurldecode( $matches[1] );
+				if ( $path === '' || strpos( $path, '..' ) !== false ) {
+					return $matches[0];
+				}
+				return $quoted_base . ltrim( $matches[1], '/' );
+			},
+			$content
+		);
+		return is_string( $rewritten ) ? $rewritten : $content;
 	}
 
 	function convert_to_wp_app_is_asset_attribute( string $tag_name, string $attribute ): bool {
