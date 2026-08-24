@@ -50,33 +50,25 @@
 			padding: 22px;
 			box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 		}
-		.step {
-			display: flex;
-			gap: 14px;
-		}
-		.primary-steps {
-			display: grid;
-			grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
-			gap: 24px;
-			align-items: start;
-		}
-		.step-number {
-			display: inline-flex;
-			align-items: center;
-			justify-content: center;
-			flex: 0 0 32px;
-			width: 32px;
-			height: 32px;
-			border-radius: 50%;
-			background: var(--accent);
-			color: #fff;
-			font-weight: 700;
-		}
-		.step-body { flex: 1; min-width: 0; }
 		h2 {
-			margin: 3px 0 12px;
-			font-size: 1.05rem;
+			margin: 0 0 8px;
+			font-size: 1.15rem;
 			line-height: 1.2;
+		}
+		.add-app label {
+			margin-top: 10px;
+		}
+		.add-row {
+			display: flex;
+			gap: 8px;
+		}
+		.add-row input {
+			flex: 1;
+			min-width: 0;
+		}
+		.add-row button {
+			flex: 0 0 auto;
+			min-height: 44px;
 		}
 		label {
 			display: block;
@@ -115,24 +107,29 @@
 			gap: 8px;
 			margin-top: 16px;
 		}
-		.primary-steps .actions {
-			flex-wrap: nowrap;
-		}
-		.primary-steps .actions button,
-		.primary-steps .actions .button {
-			min-height: 40px;
-			padding: 8px 10px;
-			font-size: 0.9rem;
-			white-space: nowrap;
-		}
 		.examples {
 			display: grid;
-			gap: 8px;
+			grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+			gap: 4px 16px;
 			margin: 6px 0 0;
-			padding-left: 20px;
+			padding: 0;
+			list-style: none;
+		}
+		.examples > .example-source {
+			grid-column: 1 / -1;
+		}
+		.examples > .source-entry {
+			flex-wrap: nowrap;
+			border-bottom: 0;
+			padding: 4px 0;
+			white-space: nowrap;
+		}
+		.examples > .source-entry .source-entry-title {
+			overflow: hidden;
+			text-overflow: ellipsis;
 		}
 		.examples-heading {
-			margin: 22px 0 0;
+			margin: 18px 0 0;
 			font-weight: 700;
 			font-size: 0.9rem;
 		}
@@ -233,24 +230,19 @@
 			font-weight: 650;
 		}
 		.staged-apps {
-			margin-top: 20px;
+			margin-top: 24px;
 			border-top: 1px solid var(--border);
-			padding-top: 16px;
-		}
-		.staged-apps-step {
-			display: flex;
-			gap: 14px;
-		}
-		.staged-apps-body {
-			flex: 1;
-			min-width: 0;
+			padding-top: 20px;
 		}
 		.staged-apps-header {
 			display: flex;
 			align-items: center;
 			justify-content: space-between;
 			gap: 12px;
-			margin-bottom: 8px;
+			margin-bottom: 10px;
+		}
+		.staged-apps-footer {
+			margin-top: 14px;
 		}
 		.staged-apps-header h2 {
 			margin: 0;
@@ -269,18 +261,45 @@
 			list-style: none;
 		}
 		.staged-app {
-			display: flex;
-			align-items: center;
-			justify-content: space-between;
-			gap: 12px;
 			padding: 9px 10px;
 			border: 1px solid var(--border);
 			border-radius: 6px;
 			background: #fbfcfe;
 		}
+		.staged-app-row {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 12px;
+		}
 		.staged-app-title {
 			min-width: 0;
 			font-weight: 650;
+		}
+		.staged-app.pending .staged-app-title small {
+			color: var(--accent-dark);
+		}
+		.staged-app.failed {
+			border-color: rgba(180, 35, 24, 0.4);
+		}
+		.staged-app.failed .staged-app-title small {
+			color: var(--error);
+		}
+		.staged-app details {
+			margin-top: 8px;
+			padding-top: 0;
+			border-top: 0;
+		}
+		.staged-app summary {
+			font-size: 0.82rem;
+			font-weight: 650;
+			color: var(--accent-dark);
+		}
+		.staged-app .row {
+			grid-template-columns: 1fr 1fr 1fr;
+		}
+		.staged-app .row label {
+			margin-top: 8px;
 		}
 		.staged-app-title small {
 			display: block;
@@ -293,6 +312,12 @@
 			min-height: 32px;
 			padding: 4px 9px;
 			font-size: 0.82rem;
+		}
+		.staged-app-actions {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 6px;
+			justify-content: flex-end;
 		}
 		button, .button {
 			display: inline-flex;
@@ -356,11 +381,8 @@
 		.hidden { display: none; }
 		@media (max-width: 680px) {
 			main { padding: 28px 0; }
-			.primary-steps { grid-template-columns: 1fr; }
 			.secondary-options { grid-template-columns: 1fr; }
 			.row { grid-template-columns: 1fr; }
-			.step { gap: 10px; }
-			.staged-apps-step { gap: 10px; }
 			.actions { flex-direction: column; }
 			.staged-apps-header {
 				align-items: stretch;
@@ -369,8 +391,20 @@
 			.staged-apps-actions {
 				justify-content: stretch;
 			}
-			.primary-steps .actions { flex-wrap: wrap; }
+			.staged-app-row {
+				align-items: stretch;
+				flex-direction: column;
+			}
+			.staged-app .row { grid-template-columns: 1fr; }
+			.staged-app-actions {
+				justify-content: stretch;
+			}
+			.staged-app-actions button {
+				flex: 1;
+				width: auto;
+			}
 			button, .button { width: 100%; }
+			.add-row button { width: auto; }
 			.examples button { width: auto; }
 		}
 	</style>
@@ -381,76 +415,45 @@
 		<p class="lede">Create a WordPress Playground link from a GitHub Pages app or a single HTML page. The blueprint loads the static files, checks out the converter, and turns them into a wp-app plugin.</p>
 
 		<form id="generator" class="panel" autocomplete="off">
-			<div class="primary-steps">
-				<div class="step">
-					<span class="step-number">1</span>
-					<div class="step-body">
-						<h2>Pick an app</h2>
-						<label for="pagesUrl">App URL</label>
-						<input id="pagesUrl" name="pagesUrl" required autocomplete="off" placeholder="https://owner.github.io/repo/ or https://example.com/app.html">
-						<p class="hint">When the app is ready, it appears in the Playground list below.</p>
-						<details id="advancedOptions" class="advanced-options">
-							<summary>Advanced options</summary>
-							<input id="repo" name="repo" type="hidden">
-
-							<div class="row">
-								<div>
-									<label for="slug">Plugin slug</label>
-									<input id="slug" name="slug" placeholder="app-name">
-								</div>
-								<div>
-									<label for="pluginName">Plugin name</label>
-									<input id="pluginName" name="pluginName" placeholder="App Name">
-								</div>
-								<div>
-									<label for="pluginAuthor">Plugin author</label>
-									<input id="pluginAuthor" name="pluginAuthor" placeholder="Author name">
-								</div>
-							</div>
-						</details>
-					</div>
+			<section class="add-app">
+				<h2>Add an app</h2>
+				<label for="pagesUrl">App URL</label>
+				<div class="add-row">
+					<input id="pagesUrl" name="pagesUrl" required autocomplete="off" placeholder="https://owner.github.io/repo/ or https://example.com/app.html">
+					<button id="addApp" class="primary" type="submit">Add</button>
 				</div>
+				<p class="hint">A GitHub Pages site or a single HTML page. The app is analyzed and added to your Playground below.</p>
+				<div id="error" class="error"></div>
+				<input id="repo" name="repo" type="hidden">
+				<input id="slug" name="slug" type="hidden">
+				<input id="pluginName" name="pluginName" type="hidden">
+				<input id="pluginAuthor" name="pluginAuthor" type="hidden">
 
-				<div class="step">
-					<span class="step-number">2</span>
-					<div class="step-body">
-						<h2>Review current app</h2>
-						<p class="hint">Adjust the advanced fields before the app finishes loading if you need a custom slug, name, or author.</p>
-						<div class="actions">
-							<button id="addCurrentApp" class="hidden" type="button" disabled>Add app</button>
-							<button id="copyBlueprint" type="button" disabled>Copy Blueprint JSON</button>
-						</div>
-						<p class="hint">You can paste the blueprint into My Apps on my.wordpress.net to install it there.</p>
-						<details class="blueprint-details">
-							<summary id="blueprintSummary">View generated blueprint</summary>
-							<label for="blueprint">Blueprint JSON</label>
-							<textarea id="blueprint" readonly></textarea>
-						</details>
-						<div id="error" class="error"></div>
-					</div>
+				<div class="examples-heading">Or pick an example:</div>
+				<ul id="examples" class="examples"></ul>
+			</section>
+
+			<section class="staged-apps">
+				<div class="staged-apps-header">
+					<h2 id="stagedAppsHeading">Your Playground (0 apps)</h2>
+					<a id="playgroundLink" class="button primary" href="#" target="_blank" rel="noopener" aria-disabled="true">Open in Playground</a>
 				</div>
-			</div>
-
-			<div class="staged-apps">
-				<div class="staged-apps-step">
-					<span class="step-number">3</span>
-					<div class="staged-apps-body">
-						<div class="staged-apps-header">
-							<h2 id="stagedAppsHeading">Playground apps (0)</h2>
-							<div class="staged-apps-actions">
-								<a id="playgroundLink" class="button primary" href="#" target="_blank" rel="noopener" aria-disabled="true">Open in Playground</a>
-								<button id="clearApps" type="button" disabled>Clear apps</button>
-								<button id="copyLink" type="button" disabled>Copy Playground Link</button>
-							</div>
-						</div>
-						<ul id="stagedApps" class="staged-apps-list"></ul>
-						<p id="stagedAppsEmpty" class="hint">No apps added yet.</p>
+				<ul id="stagedApps" class="staged-apps-list"></ul>
+				<p id="stagedAppsEmpty" class="hint">Nothing here yet. Enter an app URL above or pick an example to get started.</p>
+				<div id="stagedAppsFooter" class="staged-apps-footer hidden">
+					<div class="staged-apps-actions">
+						<button id="copyLink" type="button" disabled>Copy Playground link</button>
+						<button id="copyBlueprint" type="button" disabled>Copy combined blueprint</button>
+						<button id="clearApps" type="button" disabled>Clear all</button>
 					</div>
+					<p class="hint">Paste a blueprint into My Apps on my.wordpress.net to install the app there.</p>
+					<details class="blueprint-details">
+						<summary id="blueprintSummary">View combined blueprint</summary>
+						<label for="blueprint">Blueprint JSON</label>
+						<textarea id="blueprint" readonly></textarea>
+					</details>
 				</div>
-			</div>
-
-			<div class="examples-heading">Examples and sources:</div>
-			<ul id="examples" class="examples"></ul>
+			</section>
 		</form>
 	</main>
 
@@ -458,7 +461,6 @@
 		import { buildBlueprint, buildPlaygroundUrl, parseGitHubPagesUrl, parseGitHubRepo, toSlug, toTitle } from './lib/blueprint-generator.js';
 
 		const form = document.querySelector('#generator');
-		const advancedOptions = document.querySelector('#advancedOptions');
 		const pagesUrl = document.querySelector('#pagesUrl');
 		const repo = document.querySelector('#repo');
 		const slug = document.querySelector('#slug');
@@ -467,7 +469,6 @@
 		const error = document.querySelector('#error');
 		const blueprintOutput = document.querySelector('#blueprint');
 		const blueprintSummary = document.querySelector('#blueprintSummary');
-		const addCurrentApp = document.querySelector('#addCurrentApp');
 		const playgroundLink = document.querySelector('#playgroundLink');
 		const copyLink = document.querySelector('#copyLink');
 		const copyBlueprint = document.querySelector('#copyBlueprint');
@@ -475,18 +476,16 @@
 		const stagedAppsList = document.querySelector('#stagedApps');
 		const stagedAppsHeading = document.querySelector('#stagedAppsHeading');
 		const stagedAppsEmpty = document.querySelector('#stagedAppsEmpty');
+		const stagedAppsFooter = document.querySelector('#stagedAppsFooter');
 		const examples = document.querySelector('#examples');
 
 		let currentPlaygroundUrl = '';
 		let currentBlueprintJson = '';
 		let currentInput = null;
 		let currentInputPlayable = false;
-		let shouldStageCurrentInput = false;
-		let manualUrlEntry = false;
 		let stagedApps = [];
+		let pendingApp = null;
 		let analyzeRequestId = 0;
-		let lastPagesUrlValue = '';
-		let committedPagesUrlValue = '';
 
 		const state = new URLSearchParams(window.location.search);
 		const initialPagesUrl = state.get('pagesUrl') || state.get('pages') || '';
@@ -496,12 +495,13 @@
 		pluginName.value = state.get('pluginName') || '';
 		pluginAuthor.value = state.get('pluginAuthor') || '';
 
-		function update(options = {}) {
+		function update() {
 			error.style.display = 'none';
 			currentInputPlayable = false;
-			shouldStageCurrentInput = Boolean(options.stageWhenReady);
 			try {
 				const inputUrl = normalizeInputUrl(pagesUrl.value);
+				pendingApp = { url: inputUrl, message: 'Analyzing...', failed: false };
+				renderStagedApps();
 				if (isExplicitHtmlPageUrl(inputUrl)) {
 					updateSingleHtmlPage(inputUrl);
 				} else if (isGitHubPagesAppUrl(inputUrl)) {
@@ -517,7 +517,8 @@
 				currentBlueprintJson = '';
 				currentInput = null;
 				currentInputPlayable = false;
-				shouldStageCurrentInput = false;
+				pendingApp = null;
+				renderStagedApps();
 				setPlayable(false);
 				error.textContent = err.message;
 				error.style.display = 'block';
@@ -556,7 +557,6 @@
 
 		function updateSingleHtmlPage(inputUrl) {
 			analyzeRequestId++;
-			advancedOptions.open = true;
 			const htmlPage = parseSingleHtmlPageUrl(inputUrl);
 			repo.value = '';
 			const selectedSlug = slug.value || htmlPage.slug;
@@ -594,17 +594,22 @@
 
 		function setPlayable(enabled) {
 			currentInputPlayable = enabled;
-			if (enabled && currentInput && shouldStageCurrentInput) {
+			if (enabled && currentInput) {
 				upsertCurrentAppInPlayground();
+				pendingApp = null;
+				pagesUrl.value = '';
+				renderStagedApps();
 			}
-			updateAddCurrentAppButton();
 			renderPlaygroundState();
 		}
 
-		function updateAddCurrentAppButton() {
-			const showButton = manualUrlEntry && currentInput;
-			addCurrentApp.classList.toggle('hidden', !showButton);
-			addCurrentApp.disabled = !showButton || !currentInputPlayable;
+		function failPending(message) {
+			if (!pendingApp) {
+				return;
+			}
+			pendingApp.failed = true;
+			pendingApp.message = message || 'Could not add this app.';
+			renderStagedApps();
 		}
 
 		function resetGenerator() {
@@ -618,13 +623,10 @@
 			currentBlueprintJson = '';
 			currentInput = null;
 			currentInputPlayable = false;
-			shouldStageCurrentInput = false;
-			manualUrlEntry = false;
 			stagedApps = [];
-			lastPagesUrlValue = '';
-			committedPagesUrlValue = '';
+			pendingApp = null;
 			blueprintOutput.value = '';
-			blueprintSummary.textContent = 'View generated blueprint';
+			blueprintSummary.textContent = 'View combined blueprint';
 			error.style.display = 'none';
 			setPlayable(false);
 			renderStagedApps();
@@ -637,7 +639,7 @@
 			currentBlueprintJson = JSON.stringify(blueprint, null, '\t');
 			currentPlaygroundUrl = buildPlaygroundUrl(playgroundBlueprint);
 			blueprintOutput.value = currentBlueprintJson;
-			blueprintSummary.textContent = `View generated blueprint (${blueprint.steps.length} steps)`;
+			blueprintSummary.textContent = `View combined blueprint (${blueprint.steps.length} steps)`;
 		}
 
 		function renderPlaygroundState() {
@@ -646,7 +648,7 @@
 				currentPlaygroundUrl = '';
 				currentBlueprintJson = '';
 				blueprintOutput.value = '';
-				blueprintSummary.textContent = 'View generated blueprint';
+				blueprintSummary.textContent = 'View combined blueprint';
 				playgroundLink.href = '#';
 				playgroundLink.setAttribute('aria-disabled', 'true');
 				copyLink.disabled = true;
@@ -670,7 +672,7 @@
 			currentBlueprintJson = JSON.stringify(blueprint, null, '\t');
 			currentPlaygroundUrl = buildPlaygroundUrl(playgroundBlueprint);
 			blueprintOutput.value = currentBlueprintJson;
-			blueprintSummary.textContent = `View generated blueprint (${blueprint.steps.length} steps)`;
+			blueprintSummary.textContent = `View combined blueprint (${blueprint.steps.length} steps)`;
 		}
 
 		function buildCombinedInput(apps) {
@@ -684,15 +686,24 @@
 			};
 		}
 
+		function buildAppBlueprintJson(app) {
+			return JSON.stringify(buildBlueprint(buildCombinedInput([app])), null, '\t');
+		}
+
 		function logAnalysis(message, state = 'info') {
 			if (!message) {
 				return;
 			}
 			if (state === 'error') {
 				console.warn(message);
+				failPending(message);
 				return;
 			}
 			console.log(message);
+			if (pendingApp && !pendingApp.failed) {
+				pendingApp.message = message;
+				renderStagedApps();
+			}
 		}
 
 		function getInput(inferred) {
@@ -844,6 +855,9 @@
 				}
 				if (result.message) {
 					logAnalysis(result.message, result.ok ? 'ok' : 'error');
+				}
+				if (!result.ok) {
+					failPending(result.message);
 				}
 				setPlayable(result.ok);
 			} catch (err) {
@@ -1307,66 +1321,30 @@
 			}, 2500);
 		}
 
+		function addAppFromUrl(url, options = {}) {
+			pagesUrl.value = url;
+			repo.value = options.repo || '';
+			slug.value = options.slug || '';
+			pluginName.value = options.pluginName || '';
+			pluginAuthor.value = options.pluginAuthor || '';
+			update();
+		}
+
 		form.addEventListener('submit', (event) => {
 			event.preventDefault();
-			update();
+			addAppFromUrl(pagesUrl.value);
 		});
 
-		function updateFromPagesUrlInput() {
-			manualUrlEntry = true;
-			if (pagesUrl.value !== lastPagesUrlValue) {
-				slug.value = '';
-				pluginName.value = '';
-				pluginAuthor.value = '';
-				lastPagesUrlValue = pagesUrl.value;
-				committedPagesUrlValue = '';
-			}
-			update();
-		}
-
-		function updateFromPagesUrlCommit() {
-			if (pagesUrl.value !== lastPagesUrlValue) {
-				slug.value = '';
-				pluginName.value = '';
-				pluginAuthor.value = '';
-				lastPagesUrlValue = pagesUrl.value;
-			}
-			update();
-		}
-
-		function normalizeCommittedUrl(value) {
-			return String(value || '').trim();
-		}
-
-		pagesUrl.addEventListener('input', updateFromPagesUrlInput);
-		pagesUrl.addEventListener('change', updateFromPagesUrlCommit);
-
-		[slug, pluginName, pluginAuthor].forEach((field) => {
-			field.addEventListener('input', updateFromCurrentAppOptions);
-			field.addEventListener('change', updateFromCurrentAppOptions);
+		pagesUrl.addEventListener('input', () => {
+			error.style.display = 'none';
 		});
-
-		function updateFromCurrentAppOptions() {
-			update({
-				stageWhenReady: Boolean(committedPagesUrlValue)
-					&& normalizeCommittedUrl(pagesUrl.value) === committedPagesUrlValue,
-			});
-		}
 
 		function bindExampleLinks() {
 			document.querySelectorAll('.example-use').forEach((button) => {
 				button.addEventListener('click', (event) => {
 					event.preventDefault();
 					const inferred = parseGitHubPagesUrl(button.dataset.pagesUrl);
-					pagesUrl.value = inferred.pagesUrl;
-					slug.value = '';
-					pluginName.value = '';
-					pluginAuthor.value = '';
-					lastPagesUrlValue = pagesUrl.value;
-					manualUrlEntry = false;
-					committedPagesUrlValue = normalizeCommittedUrl(pagesUrl.value);
-					repo.value = inferred.url;
-					update({ stageWhenReady: true });
+					addAppFromUrl(inferred.pagesUrl, { repo: inferred.url });
 				});
 			});
 			document.querySelectorAll('.challenge-source').forEach((details) => {
@@ -1398,22 +1376,19 @@
 					standaloneLink.href = viewUrl;
 					standaloneLink.target = '_blank';
 					standaloneLink.rel = 'noopener';
-					standaloneLink.textContent = 'Try standalone';
+					standaloneLink.textContent = 'Open \u2197';
 
 					const useLink = document.createElement('a');
 					useLink.className = 'source-entry-action example-use';
 					useLink.href = '#';
 					useLink.dataset.pagesUrl = item.pagesUrl;
-					useLink.textContent = 'Add it';
+					useLink.textContent = 'Add';
 
 					li.append(title, standaloneLink, useLink);
 				}
 
 				if (item.description) {
-					const description = document.createElement('span');
-					description.className = 'example-description';
-					description.textContent = item.description;
-					li.append(description);
+					li.title = item.description;
 				}
 				if (item.entriesUrl) {
 					const details = document.createElement('details');
@@ -1510,12 +1485,12 @@
 			standaloneLink.href = sourceEntryUrl(entry);
 			standaloneLink.target = '_blank';
 			standaloneLink.rel = 'noopener';
-			standaloneLink.textContent = 'Try standalone';
+			standaloneLink.textContent = 'Open \u2197';
 
 			const useLink = document.createElement('a');
 			useLink.className = 'source-entry-action';
 			useLink.href = '#';
-			useLink.textContent = 'Add it';
+			useLink.textContent = 'Add';
 			useLink.addEventListener('click', (event) => {
 				event.preventDefault();
 				useSingleHtmlExample({
@@ -1538,25 +1513,11 @@
 		}
 
 		function useSingleHtmlExample(entry) {
-			pagesUrl.value = entry.url;
-			slug.value = parseSingleHtmlPageUrl(entry.url).slug;
-			pluginName.value = entry.title;
-			pluginAuthor.value = entry.author;
-			lastPagesUrlValue = pagesUrl.value;
-			manualUrlEntry = false;
-			committedPagesUrlValue = normalizeCommittedUrl(pagesUrl.value);
-			update({ stageWhenReady: true });
-		}
-
-		function addCurrentAppFromButton() {
-			if (!currentInputPlayable || !currentInput) {
-				return;
-			}
-			committedPagesUrlValue = normalizeCommittedUrl(pagesUrl.value);
-			upsertCurrentAppInPlayground();
-			manualUrlEntry = false;
-			updateAddCurrentAppButton();
-			renderPlaygroundState();
+			addAppFromUrl(entry.url, {
+				slug: parseSingleHtmlPageUrl(entry.url).slug,
+				pluginName: entry.title,
+				pluginAuthor: entry.author,
+			});
 		}
 
 		function upsertCurrentAppInPlayground() {
@@ -1599,34 +1560,131 @@
 		}
 
 		function renderStagedApps() {
-			stagedAppsHeading.textContent = `Playground apps (${stagedApps.length})`;
+			const count = stagedApps.length;
+			stagedAppsHeading.textContent = `Your Playground (${count} ${count === 1 ? 'app' : 'apps'})`;
 			stagedAppsList.replaceChildren();
-			stagedAppsEmpty.classList.toggle('hidden', stagedApps.length > 0);
-			clearApps.disabled = stagedApps.length === 0;
+			stagedAppsEmpty.classList.toggle('hidden', count > 0 || Boolean(pendingApp));
+			stagedAppsFooter.classList.toggle('hidden', count === 0);
+			clearApps.disabled = count === 0;
 
 			stagedApps.forEach((app, index) => {
-				const item = document.createElement('li');
-				item.className = 'staged-app';
+				stagedAppsList.append(renderStagedApp(app, index));
+			});
+			if (pendingApp) {
+				stagedAppsList.append(renderPendingApp(pendingApp));
+			}
+		}
 
-				const title = document.createElement('span');
-				title.className = 'staged-app-title';
-				title.textContent = app.pluginName || toTitle(app.slug);
-				const meta = document.createElement('small');
-				meta.textContent = app.sourceUrl || app.repo || app.slug;
-				title.append(meta);
+		function renderStagedApp(app, index) {
+			const item = document.createElement('li');
+			item.className = 'staged-app';
 
-				const remove = document.createElement('button');
-				remove.type = 'button';
-				remove.textContent = 'Remove';
-				remove.addEventListener('click', () => {
-					stagedApps.splice(index, 1);
-					renderStagedApps();
+			const row = document.createElement('div');
+			row.className = 'staged-app-row';
+
+			const title = document.createElement('span');
+			title.className = 'staged-app-title';
+			title.textContent = app.pluginName || toTitle(app.slug);
+			const meta = document.createElement('small');
+			meta.textContent = app.sourceUrl || app.repo || app.slug;
+			title.append(meta);
+
+			const remove = document.createElement('button');
+			remove.type = 'button';
+			remove.textContent = 'Remove';
+			remove.addEventListener('click', () => {
+				stagedApps.splice(index, 1);
+				renderStagedApps();
+				renderPlaygroundState();
+			});
+
+			const copyAppBlueprint = document.createElement('button');
+			copyAppBlueprint.type = 'button';
+			copyAppBlueprint.textContent = 'Copy blueprint';
+			copyAppBlueprint.addEventListener('click', () => {
+				copyText(copyAppBlueprint, buildAppBlueprintJson(app));
+			});
+
+			const actions = document.createElement('div');
+			actions.className = 'staged-app-actions';
+			actions.append(copyAppBlueprint, remove);
+			row.append(title, actions);
+
+			const options = document.createElement('details');
+			const summary = document.createElement('summary');
+			summary.textContent = 'Plugin options';
+			const fields = document.createElement('div');
+			fields.className = 'row';
+			fields.append(
+				renderAppField(app, index, 'slug', 'Plugin slug', title),
+				renderAppField(app, index, 'pluginName', 'Plugin name', title),
+				renderAppField(app, index, 'pluginAuthor', 'Plugin author', title),
+			);
+			options.append(summary, fields);
+
+			item.append(row, options);
+			return item;
+		}
+
+		function renderAppField(app, index, key, labelText, titleElement) {
+			const wrapper = document.createElement('div');
+			const label = document.createElement('label');
+			const id = `app-${index}-${key}`;
+			label.htmlFor = id;
+			label.textContent = labelText;
+			const input = document.createElement('input');
+			input.id = id;
+			input.value = app[key] || '';
+			input.addEventListener('input', () => {
+				app[key] = input.value;
+				titleElement.firstChild.textContent = app.pluginName || toTitle(app.slug);
+				renderPlaygroundState();
+			});
+			if (key === 'slug') {
+				input.addEventListener('change', () => {
+					const others = stagedApps.filter((other) => other !== app);
+					app.slug = nextAvailableSlug(input.value || toTitle(app.pluginName || 'app'), others);
+					input.value = app.slug;
+					titleElement.firstChild.textContent = app.pluginName || toTitle(app.slug);
 					renderPlaygroundState();
 				});
+			}
+			wrapper.append(label, input);
+			return wrapper;
+		}
 
-				item.append(title, remove);
-				stagedAppsList.append(item);
-			});
+		function renderPendingApp(pending) {
+			const item = document.createElement('li');
+			item.className = `staged-app ${pending.failed ? 'failed' : 'pending'}`;
+
+			const row = document.createElement('div');
+			row.className = 'staged-app-row';
+
+			const title = document.createElement('span');
+			title.className = 'staged-app-title';
+			title.textContent = pending.url;
+			const meta = document.createElement('small');
+			meta.textContent = pending.message;
+			title.append(meta);
+			row.append(title);
+
+			if (pending.failed) {
+				const dismiss = document.createElement('button');
+				dismiss.type = 'button';
+				dismiss.textContent = 'Dismiss';
+				dismiss.addEventListener('click', () => {
+					analyzeRequestId++;
+					pendingApp = null;
+					renderStagedApps();
+				});
+				const actions = document.createElement('div');
+				actions.className = 'staged-app-actions';
+				actions.append(dismiss);
+				row.append(actions);
+			}
+
+			item.append(row);
+			return item;
 		}
 
 		function clearStagedApps() {
@@ -1652,7 +1710,6 @@
 			}
 		}
 
-		addCurrentApp.addEventListener('click', addCurrentAppFromButton);
 		clearApps.addEventListener('click', clearStagedApps);
 		copyLink.addEventListener('click', () => copyText(copyLink, currentPlaygroundUrl));
 		copyBlueprint.addEventListener('click', () => copyText(copyBlueprint, currentBlueprintJson));
@@ -1663,7 +1720,6 @@
 		});
 
 		loadExamples();
-		lastPagesUrlValue = pagesUrl.value;
 		if (pagesUrl.value) {
 			update();
 		} else {
