@@ -546,13 +546,6 @@
 
 			setPlayable(false);
 			analyzePagesInput(inferred, currentInput);
-
-			replaceHistory({
-				pagesUrl: inferred.pagesUrl,
-				slug: selectedSlug,
-				pluginName: selectedPluginName,
-				pluginAuthor: pluginAuthor.value,
-			});
 		}
 
 		function updateSingleHtmlPage(inputUrl) {
@@ -573,23 +566,6 @@
 			logAnalysis('Checking page assets...');
 			setPlayable(false);
 			analyzeSingleHtmlPage(htmlPage, currentInput);
-
-			replaceHistory({
-				pagesUrl: htmlPage.url,
-				slug: selectedSlug,
-				pluginName: selectedPluginName,
-				pluginAuthor: pluginAuthor.value,
-			});
-		}
-
-		function replaceHistory(values) {
-			const params = new URLSearchParams();
-			for (const [key, value] of Object.entries(values)) {
-				if (value) {
-					params.set(key, value);
-				}
-			}
-			window.history.replaceState(null, '', `?${params.toString()}`);
 		}
 
 		function setPlayable(enabled) {
