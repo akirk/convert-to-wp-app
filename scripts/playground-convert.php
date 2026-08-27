@@ -187,9 +187,16 @@ if ( ! function_exists( 'convert_to_wp_app_playground' ) ) {
 		$head = convert_to_wp_app_rewrite_asset_urls( $head, $source_public_path );
 		$body = convert_to_wp_app_rewrite_asset_urls( $body, $source_public_path );
 
-		$head = preg_replace( '/<title\b[^>]*>.*?<\/title>/is', '<title><?php wp_app_title(); ?></title>', $head, 1, $count );
+		$title_tag = '<title><?php echo wp_app_title(); ?></title>';
+		if ( preg_match( '/<title\b[^>]*>(.*?)<\/title>/is', $head, $title_match ) ) {
+			$title = trim( html_entity_decode( strip_tags( $title_match[1] ), ENT_QUOTES ) );
+			if ( $title !== '' ) {
+				$title_tag = '<title><?php echo wp_app_title( ' . var_export( $title, true ) . ' ); ?></title>';
+			}
+		}
+		$head = preg_replace( '/<title\b[^>]*>.*?<\/title>/is', $title_tag, $head, 1, $count );
 		if ( $count === 0 ) {
-			$head = "<title><?php wp_app_title(); ?></title>\n" . ltrim( $head );
+			$head = $title_tag . "\n" . ltrim( $head );
 		}
 
 		$plugin_file = var_export( $slug . '.php', true );
