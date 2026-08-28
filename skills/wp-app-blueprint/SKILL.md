@@ -12,13 +12,13 @@ Use this skill when a user wants a `playground.wordpress.net` link or Blueprint 
 Do not hand-write the blueprint unless debugging the generator. Use:
 
 ```bash
-node scripts/generate-blueprint.js --repo https://github.com/owner/repo
+npx wr-app https://github.com/owner/repo
 ```
 
 For a Playground URL:
 
 ```bash
-node scripts/generate-blueprint.js --repo https://github.com/owner/repo --playground-url
+npx wr-app https://github.com/owner/repo --playground-url
 ```
 
 ## Inputs To Infer
@@ -78,14 +78,14 @@ php -l scripts/playground-convert.php
 
 ## Manual Local Conversion
 
-When the user wants the same conversion outside Playground and already has local files, use:
+When the user wants the same conversion outside Playground and already has local files, run the CLI from the app directory with the plugin slug:
 
 ```bash
-php scripts/convert-static.php \
-  --plugin-dir /path/to/wp-content/plugins/my-app \
-  --source-build-dir /path/to/source-or-static-build \
-  --wp-app-source-dir /path/to/wp-app
+cd /path/to/app
+npx wr-app my-app --out /path/to/wp-content/plugins/my-app
 ```
+
+The WpApp runtime is downloaded and cached automatically; pass `--wp-app-dir` for a local checkout. `php scripts/convert-static.php` is the PHP equivalent used inside Playground.
 
 This is not a Blueprint generator. It does the same final file transformation on local directories.
 

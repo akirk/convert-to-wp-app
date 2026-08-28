@@ -2,6 +2,40 @@
 
 Wrap an existing one-page app as a WordPress plugin powered by [WpApp](https://github.com/akirk/wp-app).
 
+## Quick start
+
+Wrap the app in the current directory into a plugin (requires Node 18+; the
+WpApp runtime is downloaded from GitHub and cached in `~/.cache/wr-app`):
+
+```bash
+cd my-app
+npx wr-app my-app
+```
+
+This writes a self-contained plugin to `./wr-app/my-app/` that you can copy
+into `wp-content/plugins/` and activate:
+
+```
+my-app/
+├── my-app.php              plugin bootstrap registering the /my-app/ route
+├── templates/index.php     your index.html (or PHP one-pager) as a WpApp template
+├── app/                    your built files, asset URLs rewritten
+└── vendor/
+    ├── autoload.php        Composer-lite loader, no composer needed
+    └── akirk/wp-app/src/   the WpApp runtime, vendored
+```
+
+The source directory is left untouched. Options: `--out DIR`, `--source-dir DIR`,
+`--plugin-name NAME`, `--url-path PATH`, `--public-path PATH`, `--wp-app-dir DIR`
+for a local WpApp checkout, and `--json`. See `npx wr-app --help`.
+
+Give it a GitHub URL instead of a slug to get a WordPress Playground blueprint
+for a remote repository (the repo name becomes the slug):
+
+```bash
+npx wr-app https://github.com/owner/repo --playground-url
+```
+
 ## GitHub Pages Blueprint Generator
 
 This repository can be published as a static GitHub Pages site. Open the page,
@@ -49,16 +83,14 @@ temporary WordPress Playground filesystem.
 The static page and LLM workflows use the same generator:
 
 ```bash
-node scripts/generate-blueprint.js \
-  --repo https://github.com/owner/repo \
+npx wr-app https://github.com/owner/repo \
   --playground-url
 ```
 
 For built files on a Pages branch:
 
 ```bash
-node scripts/generate-blueprint.js \
-  --repo https://github.com/owner/repo \
+npx wr-app https://github.com/owner/repo \
   --built-ref gh-pages \
   --built-ref-type branch \
   --playground-url

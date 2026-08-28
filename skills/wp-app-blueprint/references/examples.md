@@ -3,8 +3,7 @@
 ## Source Repo With Build Output
 
 ```bash
-node scripts/generate-blueprint.js \
-  --repo https://github.com/example/static-app \
+npx wr-app https://github.com/example/static-app \
   --ref HEAD \
   --playground-url
 ```
@@ -14,8 +13,7 @@ The converter checks `build/index.html`, then `dist/index.html`, then a deployab
 ## PHP One-Pager Source Repo
 
 ```bash
-node scripts/generate-blueprint.js \
-  --repo https://github.com/jonathanbossenger/times-table-tester/ \
+npx wr-app https://github.com/jonathanbossenger/times-table-tester/ \
   --ref HEAD \
   --playground-url
 ```
@@ -25,8 +23,7 @@ The converter checks out the unmodified repo, detects root `index.php`, copies t
 ## Built Files On `gh-pages`
 
 ```bash
-node scripts/generate-blueprint.js \
-  --repo https://github.com/example/static-app \
+npx wr-app https://github.com/example/static-app \
   --built-ref gh-pages \
   --built-ref-type branch \
   --playground-url
@@ -37,8 +34,7 @@ The blueprint checks out source into `{slug}` and built files into `__wp_app_sta
 ## Built Files In A Subdirectory
 
 ```bash
-node scripts/generate-blueprint.js \
-  --repo https://github.com/example/static-app \
+npx wr-app https://github.com/example/static-app \
   --built-ref main \
   --built-ref-type branch \
   --built-path docs \

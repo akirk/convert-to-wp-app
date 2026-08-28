@@ -1,8 +1,24 @@
 {
   "name": "wr-app",
-  "private": true,
+  "version": "0.1.0",
+  "description": "Wrap existing one-page apps as WpApp plugins",
   "type": "module",
+  "bin": {
+    "wr-app": "bin/wr-app.js"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "README.md"
+  ],
   "scripts": {
-    "generate-blueprint": "node scripts/generate-blueprint.js"
+    "generate-blueprint": "node bin/wr-app.js"
+  },
+  "repository": "github:akirk/wr-app",
+  "homepage": "https://akirk.github.io/wr-app/",
+  "keywords": ["wordpress", "wp-app", "playground", "blueprint"],
+  "license": "GPL-2.0-or-later",
+  "engines": {
+    "node": ">=18"
   }
 }
