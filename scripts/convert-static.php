@@ -6,7 +6,7 @@
 
 require_once __DIR__ . '/playground-convert.php';
 
-function convert_to_wp_app_cli_usage(): string {
+function wr_app_cli_usage(): string {
 	return <<<TEXT
 Usage:
   php scripts/convert-static.php --plugin-dir /path/to/wp-content/plugins/my-app --source-build-dir /path/to/static-build --wp-app-source-dir /path/to/wp-app [options]
@@ -25,7 +25,7 @@ Options:
 TEXT;
 }
 
-function convert_to_wp_app_cli_args( array $argv ): array {
+function wr_app_cli_args( array $argv ): array {
 	$args = array();
 	for ( $i = 1; $i < count( $argv ); $i++ ) {
 		$token = $argv[ $i ];
@@ -51,9 +51,9 @@ function convert_to_wp_app_cli_args( array $argv ): array {
 }
 
 try {
-	$args = convert_to_wp_app_cli_args( $argv );
+	$args = wr_app_cli_args( $argv );
 	if ( ! empty( $args['help'] ) ) {
-		echo convert_to_wp_app_cli_usage();
+		echo wr_app_cli_usage();
 		exit( 0 );
 	}
 
@@ -67,11 +67,11 @@ try {
 		$args['plugins_dir'] = dirname( rtrim( str_replace( '\\', '/', $args['plugin_dir'] ), '/' ) );
 	}
 
-	$result = convert_to_wp_app_playground( $args );
+	$result = wr_app_playground( $args );
 	echo "Converted {$result['slug']}\n";
 	echo "Plugin: {$result['plugin_dir']}\n";
 	echo "Route: {$result['url']}\n";
 } catch ( Throwable $e ) {
-	fwrite( STDERR, $e->getMessage() . PHP_EOL . PHP_EOL . convert_to_wp_app_cli_usage() );
+	fwrite( STDERR, $e->getMessage() . PHP_EOL . PHP_EOL . wr_app_cli_usage() );
 	exit( 1 );
 }

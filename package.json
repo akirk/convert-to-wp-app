@@ -1,5 +1,5 @@
 {
-  "name": "convert-to-wp-app",
+  "name": "wr-app",
   "private": true,
   "type": "module",
   "scripts": {

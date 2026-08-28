@@ -41,9 +41,9 @@ Options:
   --built-path PATH          Optional subdirectory containing built static files.
   --slug SLUG                Plugin slug and URL path.
   --plugin-name NAME         Human plugin/app name.
-  --converter-ref REF        convert-to-wp-app ref. Default: main.
+  --converter-ref REF        wr-app ref. Default: main.
   --converter-ref-type TYPE  branch, tag, or commit. Default: branch.
-  --converter-repo URL       Converter repo. Default: https://github.com/akirk/convert-to-wp-app.
+  --converter-repo URL       Converter repo. Default: https://github.com/akirk/wr-app.
   --playground-url           Print the playground.wordpress.net URL instead of JSON.
 `;
 }

@@ -1,5 +1,5 @@
 {
-    "name": "akirk/convert-to-wp-app",
+    "name": "akirk/wr-app",
     "description": "Convert an existing frontend app into a WordPress plugin powered by WpApp",
     "type": "project",
     "license": "GPL-2.0-or-later",

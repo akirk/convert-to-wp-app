@@ -6,7 +6,7 @@
  * augments the parent directory, so this works:
  *
  *   cd existing-react-app
- *   composer create-project akirk/convert-to-wp-app .wp-app-converter
+ *   composer create-project akirk/wr-app .wp-app-converter
  */
 
 use Akirk\CreateWpApp\ExistingAppAugmenter;
@@ -32,7 +32,7 @@ if ( file_exists( $composer_autoload ) ) {
 $is_interactive = getenv( 'COMPOSER_NO_INTERACTION' ) !== '1'
     && stream_isatty( STDIN );
 
-function convert_to_wp_app_get_value( string $env_key, string $question, ?string $default, bool $interactive ): string {
+function wr_app_get_value( string $env_key, string $question, ?string $default, bool $interactive ): string {
     $env_value = $env_key !== '' ? getenv( $env_key ) : false;
     if ( $env_value !== false && $env_value !== '' ) {
         return $env_value;
@@ -49,7 +49,7 @@ function convert_to_wp_app_get_value( string $env_key, string $question, ?string
     return $answer !== '' ? $answer : ( $default ?? '' );
 }
 
-function convert_to_wp_app_has_build( string $target_dir ): bool {
+function wr_app_has_build( string $target_dir ): bool {
     foreach ( [ 'build', 'dist' ] as $directory ) {
         if ( is_file( $target_dir . DIRECTORY_SEPARATOR . $directory . DIRECTORY_SEPARATOR . 'index.html' ) ) {
             return true;
@@ -57,7 +57,7 @@ function convert_to_wp_app_has_build( string $target_dir ): bool {
     }
 
     $root_index = $target_dir . DIRECTORY_SEPARATOR . 'index.html';
-    if ( is_file( $root_index ) && convert_to_wp_app_is_deployable_root_index( $root_index ) ) {
+    if ( is_file( $root_index ) && wr_app_is_deployable_root_index( $root_index ) ) {
         return true;
     }
 
@@ -65,7 +65,7 @@ function convert_to_wp_app_has_build( string $target_dir ): bool {
     return $source_build_dir !== false && $source_build_dir !== '' && is_file( $source_build_dir . DIRECTORY_SEPARATOR . 'index.html' );
 }
 
-function convert_to_wp_app_is_deployable_root_index( string $index_html ): bool {
+function wr_app_is_deployable_root_index( string $index_html ): bool {
     $html = file_get_contents( $index_html );
     if ( $html === false ) {
         return false;
@@ -79,7 +79,7 @@ function convert_to_wp_app_is_deployable_root_index( string $index_html ): bool 
 }
 
 $default_target_dir = dirname( getcwd() );
-$target_dir = convert_to_wp_app_get_value(
+$target_dir = wr_app_get_value(
     'WP_APP_TARGET_DIR',
     'Existing app directory to convert',
     $default_target_dir,
@@ -108,7 +108,7 @@ echo str_repeat( '-', 40 ) . "\n";
 echo "Target: $target_dir\n";
 echo "\n";
 
-if ( ! convert_to_wp_app_has_build( $target_dir ) ) {
+if ( ! wr_app_has_build( $target_dir ) ) {
     fwrite(
         STDERR,
         "Could not find a deployable static frontend in $target_dir/index.html, $target_dir/build, or $target_dir/dist.\n" .
@@ -117,9 +117,9 @@ if ( ! convert_to_wp_app_has_build( $target_dir ) ) {
     exit( 1 );
 }
 
-$plugin_name = convert_to_wp_app_get_value( 'WP_APP_PLUGIN_NAME', 'Plugin name', Scaffolder::slug_to_title( $slug ), $is_interactive );
-$namespace = convert_to_wp_app_get_value( 'WP_APP_NAMESPACE', 'Namespace', Scaffolder::to_namespace( $plugin_name ), $is_interactive );
-$url_path = convert_to_wp_app_get_value( 'WP_APP_URL_PATH', 'URL path', $slug, $is_interactive );
+$plugin_name = wr_app_get_value( 'WP_APP_PLUGIN_NAME', 'Plugin name', Scaffolder::slug_to_title( $slug ), $is_interactive );
+$namespace = wr_app_get_value( 'WP_APP_NAMESPACE', 'Namespace', Scaffolder::to_namespace( $plugin_name ), $is_interactive );
+$url_path = wr_app_get_value( 'WP_APP_URL_PATH', 'URL path', $slug, $is_interactive );
 $wp_app_source_dir = getenv( 'WP_APP_SOURCE_DIR' );
 if ( $wp_app_source_dir === false || $wp_app_source_dir === '' ) {
     $candidate_wp_app_source_dir = __DIR__ . '/../vendor/akirk/wp-app';

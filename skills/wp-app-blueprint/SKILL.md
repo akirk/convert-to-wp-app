@@ -1,6 +1,6 @@
 ---
 name: wp-app-blueprint
-description: Use when creating WordPress Playground blueprints that convert GitHub-hosted one-page apps into self-contained WpApp plugins via git:directory checkouts and convert-to-wp-app.
+description: Use when creating WordPress Playground blueprints that convert GitHub-hosted one-page apps into self-contained WpApp plugins via git:directory checkouts and wr-app.
 ---
 
 # WpApp Blueprint

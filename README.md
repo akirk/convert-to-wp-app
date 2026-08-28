@@ -1,6 +1,6 @@
-# convert-to-wp-app
+# wr-app
 
-Convert an existing one-page app into a WordPress plugin powered by [WpApp](https://github.com/akirk/wp-app).
+Wrap an existing one-page app as a WordPress plugin powered by [WpApp](https://github.com/akirk/wp-app).
 
 ## GitHub Pages Blueprint Generator
 
@@ -11,8 +11,8 @@ app and open a single Playground link that installs all apps in the list.
 
 For the generated blueprints to check out the converter from the same public
 location as the Pages site, publish this code to
-`https://github.com/akirk/convert-to-wp-app` and enable GitHub Pages there. The
-resulting site URL is `https://akirk.github.io/convert-to-wp-app/`.
+`https://github.com/akirk/wr-app` and enable GitHub Pages there. The
+resulting site URL is `https://akirk.github.io/wr-app/`.
 
 The generated Playground blueprint:
 
@@ -22,7 +22,7 @@ The generated Playground blueprint:
    with `git:directory` into `wp-content/plugins/__wp_app_static`.
 3. Checks out `akirk/wp-app` into `wp-content/plugins/__wp_app_runtime`.
 4. Checks out this converter repository into
-   `wp-content/plugins/__convert_to_wp_app`.
+   `wp-content/plugins/__wr_app`.
 5. Runs `scripts/playground-convert.php` from that checkout with `runPHP`.
 6. Imports local checked-out app files into the plugin.
 7. Writes a self-contained WpApp plugin bootstrap and Composer-lite autoloader.
@@ -91,10 +91,10 @@ Run this from inside the existing app:
 
 ```bash
 cd my-react-app
-composer create-project akirk/convert-to-wp-app
+composer create-project akirk/wr-app
 ```
 
-Composer creates `convert-to-wp-app/`, then the wizard treats `..` as the existing app and augments it in place.
+Composer creates `wr-app/`, then the wizard treats `..` as the existing app and augments it in place.
 
 The converter accepts:
 
@@ -124,7 +124,7 @@ WP_APP_NAMESPACE="MyApp"
 WP_APP_URL_PATH="my-app"
 WP_APP_SOURCE_BUILD_DIR=/path/to/existing-app/build
 WP_APP_FRONTEND_ASSET_DIR=app
-composer create-project akirk/convert-to-wp-app
+composer create-project akirk/wr-app
 ```
 
 `WP_APP_TARGET_DIR` defaults to the parent directory of the temporary converter project.
@@ -134,5 +134,5 @@ composer create-project akirk/convert-to-wp-app
 The converter does not delete its own project directory. After a successful conversion, remove it yourself:
 
 ```bash
-rm -rf convert-to-wp-app
+rm -rf wr-app
 ```
